@@ -102,11 +102,15 @@ const UI = {
     box.innerHTML = '';
     $('#story').classList.toggle('ending', !!ending);
     $('#story').dataset.ending = ending || '';
+    UI._scene = { id, title, text, choices };
+    if (typeof AI !== 'undefined' && AI.ready() && !ending && choices.some(c => !c.locked) && (G.flags['ai_count_' + id] || 0) < 2 && !vote) {
+      choices = choices.concat([{ label: 'Do something else…', hint: 'Describe your own action — the AI game master will judge it', ui: 'ai' }]);
+    }
     UI._vote = vote ? { picks: [] } : null;
     if (vote) box.appendChild(el('div', { class: 'vote-banner' }, `🗳️ <b>${esc(G.party[0].name)}</b>, choose what you think you should do. Then <b>${esc(G.party[1].name)}</b> chooses. If you disagree, you'll argue it out.`));
     choices.forEach(ch => {
       const b = el('button', { class: 'choice' + (ch.locked ? ' locked' : '') + (ch.check ? ' has-check' : '') + (ch.combat ? ' has-combat' : '') + (ch.hollow ? ' hollow-choice' : ''), disabled: ch.locked ? 'disabled' : undefined });
-      const icon = ch.hollow ? '🌫️' : ch.combat ? '⚔️' : ch.check ? '🎲' : ch.ui === 'shop' ? '' : '➤';
+      const icon = ch.hollow ? '🌫️' : ch.combat ? '⚔️' : ch.check ? '🎲' : ch.ui === 'ai' ? '✍️' : ch.ui === 'shop' ? '' : '➤';
       b.innerHTML = `<span class="c-label">${icon ? `<span class="c-icon">${icon}</span>` : ''}${ch.label}</span>${ch.hint || ch.lockReason ? `<span class="c-hint">${ch.locked ? '🔒 ' : ''}${ch.lockReason || ch.hint}</span>` : ''}`;
       b.addEventListener('click', () => {
         if (UI._vote && !ch.ui) {
@@ -151,6 +155,55 @@ const UI = {
     step();
   },
 
+  /* Free-text action, judged by the AI game master */
+  showAiInput() {
+    const sc = UI._scene;
+    const box = $('#story-choices');
+    box.innerHTML = '';
+    const panel = el('div', { class: 'check-panel ai-panel' });
+    panel.innerHTML = `<div class="check-head"><b>✍️ What do you do?</b><span>Describe an action in a sentence. The game master will decide what it takes.</span></div>`;
+    let actor = alive()[0] || G.party[0];
+    if (G.party.length > 1) {
+      const who = el('div', { class: 'who' });
+      const draw = () => { who.innerHTML = ''; alive().forEach(c => who.appendChild(el('button', { class: 'who-btn' + (c === actor ? ' sel' : ''), onclick: () => { actor = c; draw(); } }, `<b>${esc(c.name)}</b>`))); };
+      draw(); panel.appendChild(who);
+    }
+    const ta = el('textarea', { class: 'ai-input', rows: 3, maxlength: 240, placeholder: 'e.g. "I cut the rope bridge so they can\'t follow us"' });
+    panel.appendChild(ta);
+    const status = el('div', { class: 'muted small' });
+    const row = el('div', { class: 'action-row' });
+    const go = el('button', { class: 'btn primary' }, 'Attempt it');
+    const back = el('button', { class: 'btn ghost', onclick: () => Engine.go(sc.id, true) }, 'Back');
+    row.appendChild(go); row.appendChild(back);
+    panel.appendChild(row); panel.appendChild(status);
+    box.appendChild(panel);
+    ta.focus();
+    go.addEventListener('click', async () => {
+      const action = ta.value.trim().replace(/\s+/g, ' ');
+      if (action.length < 3) { status.textContent = 'Write a little more.'; return; }
+      go.disabled = true; back.disabled = true; ta.disabled = true;
+      status.innerHTML = '<span class="ai-thinking">The game master considers your plan…</span>';
+      const mappable = AI.mappable(sc.choices);
+      try {
+        const ruling = await AI.judge({ title: sc.title, text: sc.text, action }, mappable, actor);
+        if (!ruling.feasible) {
+          panel.innerHTML = `<div class="outcome-text">${P(esc(ruling.attempt))}</div>`;
+          panel.appendChild(el('button', { class: 'btn primary', onclick: () => Engine.go(sc.id, true) }, 'Back to your options'));
+          return;
+        }
+        G.flags['ai_count_' + sc.id] = (G.flags['ai_count_' + sc.id] || 0) + 1;
+        chronicle(`${actor.name} tried their own plan: "${action}".`);
+        ruling.success_text = esc(ruling.success_text); ruling.failure_text = esc(ruling.failure_text);
+        const ch = AI.buildChoice(esc(action), ruling, mappable);
+        $('#story-notes').innerHTML = `<div class="ai-attempt">${P(esc(ruling.attempt))}${ruling.counts_as >= 0 ? `<small class="muted">(This is another way of: ${mappable[ruling.counts_as].label.replace(/<[^>]+>/g, '')})</small>` : ''}</div>`;
+        Engine.choose(ch);
+      } catch (e) {
+        status.innerHTML = `<span class="bad-text">${esc(e && e.message ? e.message : String(e))}</span>`;
+        go.disabled = false; back.disabled = false; ta.disabled = false;
+      }
+    });
+  },
+
   openMap() {
     if (!G) return;
     UI.modal(`<div class="journal"><h2>🗺️ The Valley</h2>${Art.map()}<p class="muted small">The Keeper's Map marks three places. The grey haze spreads from ${V().stronghold} as Doom rises.</p></div>`);
@@ -169,6 +222,16 @@ const UI = {
         });
         wrap.appendChild(row);
       });
+      const ai = el('div', { class: 'ai-settings' });
+      ai.innerHTML = `<h3>✍️ AI Game Master <small class="muted">(optional)</small></h3>
+        <p class="muted small">Adds a "Do something else…" option to scenes: type any action and Claude (${AI_MODEL}) decides which skill it needs and how hard it is, and narrates the result. It needs your own Anthropic API key, which is stored only in this browser and sent only to api.anthropic.com. Each attempt is a small paid API call on your account. Anyone using this browser can use the key — don't enable it on a shared computer.</p>`;
+      const en = el('label', { class: 'setting' }, `<input type="checkbox" ${AI.cfg.enabled ? 'checked' : ''}> <span><b>Enable the AI game master</b></span>`);
+      en.querySelector('input').addEventListener('change', e => { AI.cfg.enabled = e.target.checked; AI.save(); });
+      const key = el('input', { type: 'password', class: 'ai-key', placeholder: 'sk-ant-…', value: AI.cfg.apiKey, autocomplete: 'off' });
+      key.addEventListener('change', () => { AI.cfg.apiKey = key.value.trim(); AI.save(); });
+      const clear = el('button', { class: 'btn small ghost', onclick: () => { AI.cfg.apiKey = ''; AI.cfg.enabled = false; AI.save(); render(); } }, 'Forget key');
+      ai.appendChild(en); ai.appendChild(el('label', { class: 'small' }, 'API key')); ai.appendChild(key); ai.appendChild(clear);
+      wrap.appendChild(ai);
     };
     render();
     UI.modal(wrap);
@@ -183,6 +246,7 @@ const UI = {
     if (typeof Sound !== 'undefined') Sound.play(ch.hollow ? 'hollow' : 'click');
     if (ch.ui === 'shop') { if (ch.once) flag('once_' + ch.once); UI.openShop(); return; }
     if (ch.ui === 'newgame') { Engine.clearSave(); UI.startCreation(); return; }
+    if (ch.ui === 'ai') { UI.showAiInput(); return; }
     Engine.choose(ch);
   },
 

@@ -28,6 +28,18 @@ Each run randomizes:
 
 Consequences carry forward: fragments you fail to recover make the villain stronger in the final battle (and can be won back); allies you help (or abandon) appear at the end; the lieutenant you spare or kill changes how the final gate goes; secrets you uncover let you try to end the war with words instead of steel; and the **Doom** meter — time and failure — darkens the world and the ending. The epilogue and chronicle recap what *your* choices did.
 
+## More depth
+
+- **Succeed at a cost** on narrow misses; in 2-player games, **help** each other or **vote** on contested decisions (and argue it out).
+- **The Hollow tempts you** when you fail or fall. Corruption unlocks dark shortcuts and Grey Fire, changes how people treat you and how the axe responds, and opens a dark ending.
+- **Tactical battles**: enemies telegraph their moves, you can interrupt, every battlefield has its own scene actions, enemies may surrender, bosses change phase.
+- **Backgrounds with personal quests**, two-player **bonds**, and **camp conversations**.
+- **A living villain** who raids, besieges Hearthmoor and takes captives while you travel — and taunts you in the campfire.
+- **Lasting injuries**, and **Story / Adventurer / Hardcore / Mythic** difficulty.
+- **The Keeper's Archive**: run history, achievements, legacy gifts — and heroes of past tales who return.
+- **Presentation**: drawn scene art, a journey map, synthesized sound and ambient drones, paced narration.
+- **Optional AI game master**: type your own action; Claude picks the skill and difficulty, narrates the result, and maps it onto the story so it stays coherent. Bring your own Anthropic API key (Settings ⚙️); it is stored only in your browser.
+
 ## Code layout
 
 ```
@@ -38,7 +50,11 @@ js/character.js    dice and character rules
 js/engine.js       game state, scene engine, checks, effects, save/load
 js/combat.js       turn-based combat
 js/ui.js           all rendering
-js/story/*.js      prologue, hub, five regions, interludes, finale
+js/meta.js         Keeper's Archive: run history, achievements, unlocks, legacy encounters
+js/art.js          procedural SVG scene art and the journey map
+js/sound.js        synthesized sound effects and ambience, settings
+js/ai.js           optional AI game master (Anthropic SDK, loaded from a CDN)
+js/story/*.js      prologue, hub, eight regions, interludes, villain moves, personal quests, finale
 tools/simulate.js  headless playtest bot: `node tools/simulate.js 500` plays 500 random games,
                    reporting crashes, dead ends, unvisited scenes and win rates per encounter
 ```

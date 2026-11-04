@@ -324,3 +324,9 @@ i { color: #d8cbb0; }
 .setting small { color: var(--muted); }
 @media (max-width: 900px) { .art-wrap { margin: -16px -16px 12px; } .scene-art { height: 110px; } }
 @media (prefers-reduced-motion: reduce) { .story-text p, .choices { transition: none; } .you-are-here, .badge-level, .intent.danger, .ecard.targetable { animation: none; } }
+.ai-input, .ai-key { width: 100%; font-family: var(--serif); font-size: 1.05rem; padding: .6em .8em; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); resize: vertical; }
+.ai-key { margin: 4px 0 8px; }
+.ai-attempt { background: #232019; border-left: 3px solid var(--gold); padding: 8px 12px; border-radius: 6px; margin: 10px 0; font-style: italic; }
+.ai-thinking { animation: pulse 1.4s infinite; }
+.bad-text { color: #f0a898; }
+.ai-settings { margin-top: 18px; padding-top: 6px; border-top: 1px solid var(--line); }
