@@ -300,3 +300,9 @@ i { color: #d8cbb0; }
 .choice.voted { border-color: var(--gold2); background: #3a2f20; }
 .vote-tag { font-size: .75rem; background: var(--gold); color: #1a1208; border-radius: 8px; padding: 0 6px; margin-left: 6px; }
 .pick:disabled { opacity: .4; cursor: not-allowed; }
+.ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 6px; }
+.ach { background: var(--bg2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; display: flex; flex-direction: column; opacity: .55; }
+.ach.got { opacity: 1; border-color: var(--gold); }
+.ach small { color: var(--muted); }
+.run { border-bottom: 1px dashed var(--line); padding: 6px 0; }
+.run.won b { color: var(--gold2); }

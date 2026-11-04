@@ -243,6 +243,7 @@ SCENES.fin_crown = {
 };
 
 SCENES.fin_battle = {
+  first: s => { if (G.allies.length >= 6) flag('host_of_allies'); },
   title: 'The Last Battle',
   text: s => P(
     `${V().name} comes at you with the whole weight of the Hollow behind ${V().object}.`,

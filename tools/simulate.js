@@ -2,14 +2,14 @@
    dead ends and balance problems.  Usage: node tools/simulate.js [games] [players 0|1|2] [story|normal|hardcore] */
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const root = path.join(__dirname, '..');
-const files = ['data.js', 'character.js', 'engine.js', 'combat.js', 'story/hub.js', 'story/prologue.js', 'story/mire.js', 'story/mines.js',
+const files = ['data.js', 'character.js', 'engine.js', 'combat.js', 'meta.js', 'story/hub.js', 'story/prologue.js', 'story/mire.js', 'story/mines.js',
   'story/harbor.js', 'story/barrow.js', 'story/peak.js', 'story/orchard.js', 'story/court.js', 'story/wych.js', 'story/interludes.js', 'story/villain.js', 'story/personal.js', 'story/finale.js'];
 
 const N = parseInt(process.argv[2] || '300', 10);
 const PLAYERS = parseInt(process.argv[3] || '0', 10); // 0 = mixed
 const DIFF = process.argv[4] || 'normal';
 
-const ctx = { console, Math, JSON, Date, setTimeout, localStorage: { getItem: () => null, setItem() {}, removeItem() {} } };
+const ctx = { console, Math, JSON, Date, setTimeout, localStorage: (() => { const m = {}; return { getItem: k => (k in m ? m[k] : null), setItem: (k, v) => { m[k] = String(v); }, removeItem: k => { delete m[k]; } }; })() };
 vm.createContext(ctx);
 const stub = `
 const Q = []; const ENC = {}; const STATS_F = { forks: 0 }; let BOT_HOLLOW = 0.3;
@@ -111,7 +111,7 @@ function runOne(nPlayers) {
   const bgs = Dice.shuffle(Object.keys(BACKGROUNDS));
   for (let i = 0; i < nPlayers; i++) { const c = Character.create('Bot' + i, Dice.pick(races), Dice.pick(classes)); c.background = bgs[i]; c.corruption = BACKGROUNDS[bgs[i]].corruption || 0; c.hp = Character.maxHp(c); chars.push(c); }
   try {
-    Engine.newGame(chars, { difficulty: DIFF, bondType: Dice.pick(Object.keys(BONDS)) });
+    Engine.newGame(chars, { difficulty: DIFF, bondType: Dice.pick(Object.keys(BONDS)), gift: Dice.pick(Meta.unlocked().gifts) });
     let guard = 0;
     while (Q.length && !SIM.ending && guard++ < 200000) Q.shift()();
     if (!SIM.ending) SIM.errors.push('stalled at ' + G.scene + ' combat=' + !!Combat.st);
@@ -141,4 +141,5 @@ const seen = {}; results.forEach(r => Object.assign(seen, r.seen));
 const unseen = allScenes.filter(s => !seen[s] && !vm.runInContext(`!!SCENES['${s}'].route`, ctx));
 console.log('unvisited scenes', unseen.join(', ') || 'none');
 const enc = vm.runInContext('ENC', ctx); console.log('encounter win%', Object.entries(enc).map(([k,v]) => `${k} ${(v[0]/v[1]*100).toFixed(0)}% (${v[1]})`).join(', '));
+console.log('achievements', Object.keys(vm.runInContext('Meta.load().achievements', ctx)).length + '/' + Object.keys(vm.runInContext('ACHIEVEMENTS', ctx)).length);
 console.log('errors', Object.keys(errs).length ? errs : 'none');

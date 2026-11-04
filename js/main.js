@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
   $('#new-btn').addEventListener('click', () => UI.startCreation());
   $('#continue-btn').addEventListener('click', () => { if (!Engine.load()) UI.startCreation(); });
   $('#help-btn').addEventListener('click', () => UI.openHelp());
+  $('#archive-btn').addEventListener('click', () => UI.openArchive());
   $('#journal-btn').addEventListener('click', () => UI.openJournal());
   $('#game-help-btn').addEventListener('click', () => UI.openHelp());
   $('#menu-btn').addEventListener('click', () => {

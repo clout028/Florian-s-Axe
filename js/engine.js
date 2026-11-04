@@ -85,6 +85,7 @@ function restoreFocus() { G.party.forEach(c => { c.focus = Character.maxFocus(c)
 function drainFocus(c, n = 1) { c.focus = Math.max(0, c.focus - n); note(`${c.name} −${n} Focus`, 'bad'); }
 
 function doom(n = 1) {
+  if (n > 0 && G.flags.doom_ward > 0) { G.flags.doom_ward--; note('The Woodcutter\'s Ward holds back the grey', 'good'); return; }
   G.doom = Math.max(0, Math.min(10, G.doom + n));
   if (n > 0) note(`The Hollow spreads (+${n} Doom)`, 'doom');
   else if (n < 0) note(`The Hollow recedes (${n} Doom)`, 'good');
@@ -125,6 +126,7 @@ function chronicle(text) { G.chronicle.push(text); }
 
 /* ---------- Corruption: the Hollow's price ---------- */
 function corrupt(c, n = 1) {
+  if (n > 0 && c.cleanHands) { c.cleanHands = false; n -= 1; note(`${c.name}'s clean hands turn the grey aside`, 'good'); if (!n) return; }
   const before = c.corruption || 0;
   c.corruption = Math.max(0, Math.min(10, before + n));
   if (n > 0) note(`${c.name} +${n} Corruption (${c.corruption}/10)`, 'doom');
@@ -231,6 +233,7 @@ const Engine = {
     };
     if (G.bondType) G.bond = BONDS[G.bondType].start;
     chars.forEach(c => { c.corruption = c.corruption || 0; c.injuries = c.injuries || []; });
+    if (typeof Meta !== 'undefined') Meta.applyStart(opts.gift);
     Engine.go(G.hook);
   },
 
@@ -263,6 +266,7 @@ const Engine = {
       if (G.temptCD > 0) G.temptCD--;
       if (first && sc.first) sc.first(G);
       if (sc.enter) sc.enter(G);
+      if (sc.ending && typeof Meta !== 'undefined') Meta.recordEnding(id, sc.ending).forEach(a => note(`🏆 Achievement: ${ACHIEVEMENTS[a].name}`, 'level'));
     }
     if (!sc.ending) Engine.save(); else Engine.clearSave();
     const title = typeof sc.title === 'function' ? sc.title(G) : sc.title;

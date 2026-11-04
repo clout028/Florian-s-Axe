@@ -522,6 +522,15 @@ const UI = {
     UI.modal(html);
   },
 
+  openArchive() {
+    const a = Meta.load();
+    const ach = Object.keys(ACHIEVEMENTS).map(k => `<div class="ach ${a.achievements[k] ? 'got' : ''}"><b>${a.achievements[k] ? '🏆' : '🔒'} ${ACHIEVEMENTS[k].name}</b><small>${ACHIEVEMENTS[k].desc}${a.achievements[k] ? ' · ' + a.achievements[k] : ''}</small></div>`).join('');
+    const runs = a.runs.length ? a.runs.map(r => `<div class="run ${r.won ? 'won' : 'lost'}"><b>${r.won ? '⚒️' : '🌫️'} ${(SCENES[r.ending] && typeof SCENES[r.ending].title === 'string') ? SCENES[r.ending].title : r.ending}</b> <small>${r.date} · vs ${VILLAINS[r.villain] ? VILLAINS[r.villain].name : r.villain} · ${DIFFICULTIES[r.difficulty] ? DIFFICULTIES[r.difficulty].name : ''} · Doom ${r.doom}</small><div class="muted small">${r.heroes.map(h => `${esc(h.name)} the ${h.desc}${h.died ? ' (fell)' : ''}`).join(', ')}</div></div>`).join('') : '<p class="muted">No tales recorded yet. Every tale you finish will be written here.</p>';
+    const fallen = a.fallen.length ? `<h3>The Fallen</h3><p class="muted">${a.fallen.map(f => `${esc(f.name)} the ${f.desc}`).join(' · ')}</p>` : '';
+    const heir = a.greyHeir ? `<p class="hollow-text"><b>${esc(a.greyHeir.name)}</b> took the Grey Crown in your last tale. They are out there, waiting.</p>` : '';
+    UI.modal(`<div class="journal"><h2>📜 The Keeper's Archive</h2>${heir}<h3>Achievements (${Object.keys(a.achievements).length}/${Object.keys(ACHIEVEMENTS).length})</h3><div class="ach-grid">${ach}</div><h3>Tales</h3>${runs}${fallen}</div>`);
+  },
+
   openHelp() {
     UI.modal(`<div class="journal"><h2>How to Play</h2>
       <p>Florian's Axe is a choose-your-own-adventure for 1 or 2 players. Each tale is different: the villain, the opening, which three lands hide the axe's fragments, and the encounters on the road are all chosen at random — and your choices decide the rest.</p>
@@ -554,9 +563,20 @@ const UI = {
       root.appendChild(el('h3', {}, 'Difficulty'));
       const drow = el('div', { class: 'count-row' });
       cr.difficulty = cr.difficulty || 'normal';
-      Object.keys(DIFFICULTIES).forEach(k => drow.appendChild(el('button', { class: 'pick' + (cr.difficulty === k ? ' sel' : ''), onclick: () => { cr.difficulty = k; UI.renderCreation(); } },
+      const unl = Meta.unlocked();
+      Object.keys(DIFFICULTIES).filter(k => unl.difficulties.includes(k)).forEach(k => drow.appendChild(el('button', { class: 'pick' + (cr.difficulty === k ? ' sel' : ''), onclick: () => { cr.difficulty = k; UI.renderCreation(); } },
         `<b>${k === 'hardcore' ? '☠️ ' : k === 'story' ? '📖 ' : '⚔️ '}${DIFFICULTIES[k].name}</b><small>${DIFFICULTIES[k].desc}</small>`)));
       root.appendChild(drow);
+      root.appendChild(el('h3', {}, 'Legacy Gift'));
+      root.appendChild(el('p', { class: 'muted' }, 'Gifts from the Keeper\'s Archive. Finish tales to unlock more.'));
+      const grow = el('div', { class: 'grid' });
+      cr.gift = cr.gift || 'none';
+      Object.keys(LEGACY_GIFTS).forEach(k => {
+        const gft = LEGACY_GIFTS[k], ok = unl.gifts.includes(k);
+        grow.appendChild(el('button', { class: 'pick' + (cr.gift === k ? ' sel' : ''), disabled: ok ? undefined : 'disabled', onclick: () => { cr.gift = k; UI.renderCreation(); } },
+          `<b>${ok ? '' : '🔒 '}${gft.name}</b><small>${gft.desc}</small>${ok ? '' : `<small class="muted">Unlock: ${gft.hint}</small>`}`));
+      });
+      root.appendChild(grow);
       return;
     }
     if (cr.bondStep) {
@@ -569,7 +589,7 @@ const UI = {
       root.appendChild(g);
       const nav = el('div', { class: 'nav-row' });
       nav.appendChild(el('button', { class: 'btn ghost', onclick: () => { cr.bondStep = false; cr.chars.pop(); cr.draft = cr.drafts[cr.idx]; UI.renderCreation(); } }, '← Back'));
-      nav.appendChild(el('button', { class: 'btn primary', disabled: cr.bondType ? undefined : 'disabled', onclick: () => Engine.newGame(cr.chars, { difficulty: cr.difficulty || 'normal', bondType: cr.bondType }) }, 'Begin the tale ⚔️'));
+      nav.appendChild(el('button', { class: 'btn primary', disabled: cr.bondType ? undefined : 'disabled', onclick: () => Engine.newGame(cr.chars, { difficulty: cr.difficulty || 'normal', bondType: cr.bondType, gift: cr.gift }) }, 'Begin the tale ⚔️'));
       root.appendChild(nav);
       return;
     }
@@ -639,7 +659,7 @@ const UI = {
       cr.chars.push(ch);
       if (cr.chars.length < cr.count) { cr.idx++; UI.newDraft(); UI.renderCreation(); }
       else if (cr.count === 2) { cr.bondStep = true; UI.renderCreation(); }
-      else { Engine.newGame(cr.chars, { difficulty: cr.difficulty || 'normal' }); }
+      else { Engine.newGame(cr.chars, { difficulty: cr.difficulty || 'normal', gift: cr.gift }); }
     } }, cr.chars.length + 1 < cr.count ? 'Next hero →' : cr.count === 2 ? 'Choose your bond →' : 'Begin the tale ⚔️'));
     root.appendChild(nav);
   },
