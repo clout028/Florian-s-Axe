@@ -58,7 +58,7 @@ SCENES.wych_square = {
     riddleChoice('"We\'ll play — ask us a riddle."', 'wych',
       { effects: () => { flag('wych_children'); G._clue = addClue(); }, text: s => { const cl = G._clue; G._clue = null; return P(`The grey child claps, without a sound. "Right! You got it right!" One by one, the ring of children let go of each other's hands for the first time in a century, and crumble into soft white ash that blows away on a wind that wasn't there before. The last one whispers as it goes:`, cl ? `<b>${cl}</b>` : `"Thank you."`); }, next: 'wych_chapel' },
       { effects: () => G.party.forEach(c => exposure(c, 13)), text: P(`"Wrong," the children say together, and the ring tightens around you. You stumble out of it with grey in your mouth.`), next: 'wych_chapel' },
-      { choice: { hint: '🧩 Riddle — the children want to play' } }),
+      { choice: { hint: 'Riddle — the children want to play' } }),
     {
       label: 'Hold up the Keeper\'s lantern',
       req: () => has('wych_lantern'),

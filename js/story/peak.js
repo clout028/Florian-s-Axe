@@ -112,7 +112,7 @@ SCENES.peak_tower = {
       },
     },
     {
-      label: 'Ring the monks\' chant on the small bells', hint: '🧩 Sequence — listen, then repeat the pattern',
+      label: 'Ring the monks\' chant on the small bells', hint: 'Sequence — listen, then repeat the pattern',
       req: () => has('abbot_cured') || hasAlly('monks'), showLocked: true,
       puzzle: { type: 'bells', key: 'peak_bells', listens: hasAlly('monks') ? 2 : 1 },
       solved: { effects: () => giveXp(40), text: P(`The last note rings out — and the great bell, struck in sympathy, answers it with a single pure, enormous tone that rolls out over the mountains. The wyrm screams as though burned and flings itself off the tower into the storm.`), next: 'peak_win' },

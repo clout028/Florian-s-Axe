@@ -136,11 +136,11 @@ const Puzzles = {
 
 /* Puzzle choices used by the story files */
 function riddleChoice(label, key, solved, failed, opts = {}) {
-  return Object.assign({ label, hint: '🧩 Riddle — answer it yourself', puzzle: Object.assign({ type: 'riddle', key }, opts), solved, failed }, opts.choice || {});
+  return Object.assign({ label, hint: 'Riddle — answer it yourself', puzzle: Object.assign({ type: 'riddle', key }, opts), solved, failed }, opts.choice || {});
 }
 function cipherChoice(key, next, label) {
   return {
-    label: label || 'Decipher the coded letter', hint: '🧩 Cipher — read it yourself (or let a scholar try)',
+    label: label || 'Decipher the coded letter', hint: 'Cipher — read it yourself (or let a scholar try)',
     req: () => G.clues.length < V().clues.length,
     puzzle: { type: 'cipher', key, text: () => V().clues.find(c => !G.clues.includes(c)) || '' },
     solved: { effects: (s, ctx) => { ctx.clue = addClue(); }, text: (s, ctx) => P(`The letters shift into words under your fingers. It reads:`, ctx.clue && `<b>${ctx.clue}</b>`), next },
@@ -152,7 +152,7 @@ function cipherChoice(key, next, label) {
 function diceGame(label, key, next, opts = {}) {
   const who = opts.opponent || 'Pip';
   return {
-    label, once: opts.once, cost: { gold: 10 }, hint: `🧩 Push your luck — beat ${who}'s score without rolling a 1`,
+    label, once: opts.once, cost: { gold: 10 }, hint: `Push your luck — beat ${who}'s score without rolling a 1`,
     puzzle: { type: 'dice', key: 'dice_' + key, bet: 10, opponent: who, title: `${who}'s Bones`, xp: 15 },
     solved: { effects: () => addGold(20), text: (s, ctx) => P(`${who} stares at the bones, then at you, and pushes the pot across the table. "Beginner's luck," ${who === 'Pip' ? 'he grumbles' : 'the old man grumbles'}. You both know it wasn't.`), next },
     failed: { effects: (s, ctx) => { if (ctx.tie) addGold(10); if (ctx.caught) G.flags.cheat_caught = true; }, text: (s, ctx) => P(ctx.tie ? `A tie. ${who} slides your stake back with a sniff. "Again sometime."` : ctx.caught ? `${who} catches the die in your palm and gives you a long, wounded look. "I'll be keeping that stake," ${who === 'Pip' ? 'he says' : 'the old man says'}. "And telling everyone."` : `${who} rakes in your coins with a grin. "The house thanks you."`), next },

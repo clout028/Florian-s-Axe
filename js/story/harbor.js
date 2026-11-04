@@ -81,7 +81,7 @@ SCENES.harbor_hold = {
       failure: { text: (s, c) => P(`The lock snaps a pick off in ${c.char.name}'s fingers and a hidden bell jangles. Boots thunder down the ladder: Quill's men, with Quill behind them. "Ah," he says mildly. "Thieves."`), next: 'harbor_fight' },
     },
     {
-      label: 'Crack the strongroom\'s combination lock', hint: '🧩 Code lock — sea-sigils instead of runes',
+      label: 'Crack the strongroom\'s combination lock', hint: 'Code lock — sea-sigils instead of runes',
       puzzle: { type: 'code', key: 'harbor_lock', title: 'Vosk\'s strongroom', flavor: 'A brass lock with four dials. Smugglers\' locks are simple, but they are never kind.', harder: true, hintLabel: 'Look for scratches round the dials', giveUpLabel: 'Leave it' },
       solved: { effects: () => flag('harbor_stole'), text: s => P(`The lock opens with a soft click. Inside, on velvet, lies ${regionFrag('harbor').name}. You tuck it away and slip back toward the hatch.`), next: 'harbor_escape' },
       failed: { text: P(`One wrong turn too many, and a hidden bell jangles. Boots thunder down the ladder: Quill's men, with Quill behind them. "Ah," he says mildly. "Thieves."`), next: 'harbor_fight' },

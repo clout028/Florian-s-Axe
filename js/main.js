@@ -1,5 +1,6 @@
 /* Boot */
 document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('[data-icon]').forEach(e => { e.outerHTML = Icon(e.dataset.icon); });
   $('#new-btn').addEventListener('click', () => UI.startCreation());
   $('#continue-btn').addEventListener('click', () => { if (!Engine.load()) UI.startCreation(); });
   $('#help-btn').addEventListener('click', () => UI.openHelp());

@@ -9,12 +9,12 @@
    =========================================================== */
 
 const STATUS_INFO = {
-  stunned: { icon: '💫', name: 'Stunned', desc: 'Loses its next action' },
-  bleeding: { icon: '🩸', name: 'Bleeding', desc: 'Takes 1d4 each round' },
-  rattled: { icon: '😖', name: 'Rattled', desc: '−2 to its next attack' },
-  exposed: { icon: '🎯', name: 'Exposed', desc: 'Attacks against it get +2' },
-  burning: { icon: '🔥', name: 'Burning', desc: 'Takes 1d6 each round' },
-  chilled: { icon: '❄️', name: 'Chilled', desc: '−1 AC' },
+  stunned: { name: 'Stunned', desc: 'Loses its next action' },
+  bleeding: { name: 'Bleeding', desc: 'Takes 1d4 each round' },
+  rattled: { name: 'Rattled', desc: '−2 to its next attack' },
+  exposed: { name: 'Exposed', desc: 'Attacks against it get +2' },
+  burning: { name: 'Burning', desc: 'Takes 1d6 each round' },
+  chilled: { name: 'Chilled', desc: '−1 AC' },
 };
 
 const Combat = {

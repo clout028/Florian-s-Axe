@@ -227,7 +227,7 @@ SCENES.mines_lock = {
     `Turn the wrong combination too many times, and the old dwarves built the lock to jam for a day and a night.`),
   choices: s => [
     {
-      label: 'Work out the combination', hint: '🧩 Code lock — ● right rune, right place · ○ right rune, wrong place',
+      label: 'Work out the combination', hint: 'Code lock — ● right rune, right place · ○ right rune, wrong place',
       puzzle: { type: 'code', key: 'mines_lock', title: 'The rune seal', flavor: 'The dials grind under your fingers. Something deep inside the door clicks with every right rune.', hintLabel: 'Read the foreman\'s ledger for hints', hintSkill: 'lore' },
       solved: { effects: () => flag('vault_open'), text: (s, ctx) => P(`The last dial clicks home. Deep in the door, a hundred-year-old bolt slides back${ctx.guesses <= 3 ? ', and you hear a sound like a dwarf\'s approving grunt from somewhere in the stone' : ''}.`), next: 'mines_vault_open' },
       failed: { effects: () => { flag('vault_open'); doom(1); }, text: P(`The lock seizes with a sound like a slammed coffin lid. It takes a day and a night of hammering to break the hinges instead — a day the Hollow uses well.`), next: 'mines_vault_open' },

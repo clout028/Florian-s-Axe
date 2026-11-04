@@ -79,34 +79,34 @@ SCENES.hub_main = {
   choices: s => {
     const remaining = G.regions.filter(r => !G.regionsDone.includes(r));
     const list = remaining.map(r => ({
-      label: `${REGIONS[r].icon} Travel to ${REGIONS[r].name}`,
+      label: `Travel to ${REGIONS[r].name}`, icon: r,
       hint: REGIONS[r].blurb,
       effects: () => { doom(1); G.flags.currentRegion = r; },
       text: s => P(`You set out for ${REGIONS[r].name}. The road takes days, and every day, the grey creeps a little further.`),
       next: () => travelTo(r),
     }));
-    list.push({ label: '🛒 Visit the market', hint: 'Buy weapons, armor and supplies', ui: 'shop' });
-    list.push(diceGame('🎲 Dice night at the Copper Kettle (stake 10 gold)', 'kettle_' + G.regionsDone.length, 'hub', { opponent: 'Old Hob the innkeeper', once: 'kettle_dice_' + G.regionsDone.length }));
+    list.push({ label: 'Visit the market', hint: 'Buy weapons, armor and supplies', ui: 'shop' });
+    list.push(diceGame('Dice night at the Copper Kettle (stake 10 gold)', 'kettle_' + G.regionsDone.length, 'hub', { opponent: 'Old Hob the innkeeper', once: 'kettle_dice_' + G.regionsDone.length }));
     if (injuryCount()) list.push({
-      label: `🩹 See Mother Brisk, the healer (${injuryCount() * 10} gold)`, hint: 'Treat every lasting injury', cost: { gold: injuryCount() * 10 },
+      label: `See Mother Brisk, the healer (${injuryCount() * 10} gold)`, hint: 'Treat every lasting injury', cost: { gold: injuryCount() * 10 },
       effects: () => { G.party.forEach(c => { while ((c.injuries || []).length) healInjury(c); }); },
       text: P(`Mother Brisk sets bones, stitches wounds and pours something foul down your throats. "Try not to come back," she says. You will.`),
       next: 'hub',
     });
     if (maxCorruption() > 0) list.push({
-      label: '🕯️ Pray at the Keepers\' chapel (15 gold)', hint: 'Cleanse 2 Corruption from every hero', cost: { gold: 15 },
+      label: 'Pray at the Keepers\' chapel (15 gold)', hint: 'Cleanse 2 Corruption from every hero', cost: { gold: 15 },
       effects: () => cleanseAll(2),
       text: s => P(`The old chapel is cold and smells of beeswax. You kneel before the carving of the woodcutter and his axe. For a while the grey in you quiets.`, maxCorruption() >= 5 && `It does not leave entirely. Some stains go deeper than prayer.`),
       next: 'hub',
     });
     list.push({
-      label: '🛏️ Rest at the Copper Kettle inn (8 gold)', hint: 'Fully restore HP and Focus', cost: { gold: 8 },
+      label: 'Rest at the Copper Kettle inn (8 gold)', hint: 'Fully restore HP and Focus', cost: { gold: 8 },
       effects: () => { healAll('full'); },
       text: P(`A hot meal, a real bed, and a night without watches. You wake feeling whole.`),
       next: 'hub',
     });
     if (hasAlly('keeper')) list.push({
-      label: `📜 Speak with Keeper ${G.flags.keeper}`, once: 'keeper_talk_' + G.regionsDone.length,
+      label: `Speak with Keeper ${G.flags.keeper}`, once: 'keeper_talk_' + G.regionsDone.length,
       effects: () => { if (G.regionsDone.length >= 1 && G.clues.length < 3 && !has('keeper_clue')) { flag('keeper_clue'); G._kclue = addClue(); } },
       text: () => {
         const c = G._kclue; G._kclue = null;
@@ -115,7 +115,7 @@ SCENES.hub_main = {
       },
       next: 'hub',
     });
-    if (!remaining.length) list.push({ label: `⚔️ March on ${V().stronghold}`, hint: 'The final confrontation. Make sure you are ready.', next: 'fin_reforge' });
+    if (!remaining.length) list.push({ label: `March on ${V().stronghold}`, hint: 'The final confrontation. Make sure you are ready.', next: 'fin_reforge' });
     return list;
   },
 };

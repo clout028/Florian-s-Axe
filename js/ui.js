@@ -28,7 +28,38 @@ const UI = {
 
   title() {
     UI.show('#title-screen');
+    document.body.classList.remove('in-game');
+    UI.setBackdrop(null);
+    if (typeof Sound !== 'undefined') Sound.ambient('title');
     $('#continue-btn').classList.toggle('hidden', !Engine.hasSave());
+  },
+
+  /* Full-screen painted backdrop; crossfades when the place changes. */
+  setBackdrop(id) {
+    if (typeof Art === 'undefined') return;
+    const key = Art.keyFor(id);
+    const bd = $('#backdrop');
+    const doomKey = key + ':' + (G ? G.doom : 0) + ':' + (G ? G.villain : '');
+    if (UI._bdKey === doomKey) return;
+    const sameScene = UI._bdKey && UI._bdKey.split(':')[0] === key;
+    UI._bdKey = doomKey;
+    const cur = bd.querySelector('.bd-layer.on');
+    if (sameScene && cur) { const svg = cur.querySelector('svg'); const fresh = Art.scene(id); const tmp = document.createElement('div'); tmp.innerHTML = fresh; svg.style.filter = tmp.firstChild.style.filter; return; }
+    const layer = document.createElement('div');
+    layer.className = 'bd-layer';
+    layer.innerHTML = Art.scene(id);
+    bd.insertBefore(layer, bd.querySelector('.bd-shade'));
+    requestAnimationFrame(() => requestAnimationFrame(() => layer.classList.add('on')));
+    if (cur) { cur.classList.remove('on'); setTimeout(() => cur.remove(), 1500); }
+  },
+
+  /* A d20 drawn as a gem-cut icosahedron face */
+  d20(value, cls = '', id) {
+    return `<div class="d20 ${cls}"${id ? ` id="${id}"` : ''}><svg viewBox="0 0 100 100"><defs><linearGradient id="dg${cls.length}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff3c8"/><stop offset=".55" stop-color="#f0c96a"/><stop offset="1" stop-color="#b37a22"/></linearGradient></defs>
+      <polygon points="50,3 93,27 93,73 50,97 7,73 7,27" fill="url(#dg${cls.length})"/>
+      <polygon points="50,20 80,70 20,70" fill="#fff" opacity=".22"/>
+      <path d="M50 3 L50 20 M93 27 L80 70 M93 73 L80 70 M50 97 L50 70 M7 73 L20 70 M7 27 L20 70 M50 20 L93 27 M50 20 L7 27 M20 70 L50 97 L80 70 M50 20 L20 70 M50 20 L80 70" stroke="#7a4a12" stroke-opacity=".35" stroke-width="1.2" fill="none"/>
+      <polygon points="50,3 93,27 93,73 50,97 7,73 7,27" fill="none" stroke="#fff6d8" stroke-opacity=".6" stroke-width="1.5"/></svg><span>${value}</span></div>`;
   },
 
   error(msg) { $('#story-choices').innerHTML = `<div class="notice bad">${esc(msg)}</div>`; },
@@ -37,18 +68,29 @@ const UI = {
   renderHeader() {
     if (!G) return;
     $('#gold').textContent = G.gold;
-    const pct = (G.doom / 10) * 100;
-    $('#doom-fill').style.width = pct + '%';
-    $('#doom-val').textContent = G.doom;
+    $('#doom-track').innerHTML = Array.from({ length: 10 }, (_, k) => `<i class="${k < G.doom ? 'on' : ''}"></i>`).join('');
+    $('#doom-track').parentElement.title = `The Hollow's reach: ${G.doom}/10 — rises with time and failure`;
+    $('#doom-track').parentElement.dataset.doom = G.doom + '/10';
     const fr = $('#frags');
     fr.innerHTML = '';
     ['head', 'haft', 'rune'].forEach(k => {
       const st = G.fragments[k];
       const cls = st === 'party' ? 'have' : st === 'villain' ? 'lost' : 'unknown';
       const tip = st === 'party' ? `${FRAGMENTS[k].name}: recovered` : st === 'villain' ? `${FRAGMENTS[k].name}: held by ${V().short}` : `${FRAGMENTS[k].name}: not yet found`;
-      fr.appendChild(el('span', { class: 'frag ' + cls, title: tip }, { head: '🪓', haft: '🪵', rune: '💠' }[k]));
+      fr.appendChild(el('span', { class: 'frag ' + cls, title: tip }, Icon('frag_' + k)));
     });
-    if (has('axe_reforged')) fr.innerHTML = '<span class="frag have" title="Florian\'s Axe, reforged">⚒️ Axe whole</span>';
+    if (has('axe_reforged')) fr.innerHTML = `<span class="frag have whole" title="Florian's Axe, reforged">${Icon('axe')} Whole</span>`;
+  },
+
+  /* Ring gauges around a crest: outer = HP, inner = Focus, thin = XP */
+  medal(c, size = 76) {
+    const max = Character.maxHp(c), fmax = Character.maxFocus(c);
+    const hp = Math.max(0, Math.min(1, c.hp / max)), fo = fmax ? Math.max(0, Math.min(1, c.focus / fmax)) : 0;
+    const next = XP_TABLE[c.level] || XP_TABLE[XP_TABLE.length - 1], prev = XP_TABLE[c.level - 1] || 0;
+    const xp = c.level >= MAX_LEVEL ? 1 : Math.min(1, (c.xp - prev) / (next - prev));
+    const ring = (r, frac, col, w, track) => { const L = 2 * Math.PI * r; return `<circle cx="38" cy="38" r="${r}" stroke="${track}" stroke-width="${w}"/><circle cx="38" cy="38" r="${r}" stroke="${col}" stroke-width="${w}" stroke-dasharray="${(L * frac).toFixed(1)} ${L.toFixed(1)}"/>`; };
+    const hpCol = hp > 0.5 ? '#ff5a72' : hp > 0.25 ? '#ff8a4a' : '#ff3a3a';
+    return `<div class="medal" style="--m:${size}px"><svg class="rings" viewBox="0 0 76 76">${ring(35, hp, hpCol, 4, 'rgba(255,255,255,.1)')}${ring(29.5, fo, '#5fd4c4', 2.5, 'rgba(255,255,255,.06)')}${ring(26.5, xp, '#a98bff', 1, 'transparent')}</svg>${Crest(c, Math.round(size * 0.68))}${c.skillPoints > 0 ? `<span class="sp" title="Unspent skill points">+${c.skillPoints}</span>` : ''}</div>`;
   },
 
   renderParty() {
@@ -56,46 +98,43 @@ const UI = {
     UI.renderHeader();
     const box = $('#party');
     box.innerHTML = '';
+    UI._hhp = UI._hhp || {};
     G.party.forEach((c, i) => {
-      const max = Character.maxHp(c), fmax = Character.maxFocus(c);
-      const hpPct = Math.max(0, Math.min(100, (c.hp / max) * 100));
-      const next = XP_TABLE[c.level] || XP_TABLE[XP_TABLE.length - 1];
-      const prev = XP_TABLE[c.level - 1] || 0;
-      const xpPct = c.level >= MAX_LEVEL ? 100 : Math.min(100, ((c.xp - prev) / (next - prev)) * 100);
-      const card = el('div', { class: 'pcard' + (c.hp <= 0 ? ' down' : '') + (Combat.st && Combat.current() === c && !Combat.st.over ? ' active' : '') });
-      card.innerHTML = `
-        <div class="pc-top">
-          <div class="pc-icon">${RACES[c.race].icon}${CLASSES[c.cls].icon}</div>
-          <div class="pc-name"><b>${esc(c.name)}</b><small>Lv ${c.level} ${Character.describe(c)}</small></div>
-          ${c.skillPoints > 0 ? `<span class="badge-level" title="Unspent skill points">+${c.skillPoints}</span>` : ''}
-        </div>
-        <div class="bar hp"><div style="width:${hpPct}%"></div><span>HP ${Math.max(0, c.hp)} / ${max}</span></div>
-        <div class="pips">${Array.from({ length: fmax }, (_, k) => `<i class="${k < c.focus ? 'on' : ''}"></i>`).join('')}<small>Focus</small></div>
-        <div class="bar xp"><div style="width:${xpPct}%"></div></div>
-        ${c.corruption ? `<div class="corr" title="Corruption: the Hollow's hold on ${esc(c.name)}">${Array.from({ length: 10 }, (_, k) => `<i class="${k < c.corruption ? 'on' : ''}"></i>`).join('')}<small>Corruption</small></div>` : ''}
-        ${(c.injuries || []).length ? `<div class="inj">${c.injuries.map(k => `<span title="${INJURIES[k].desc}">🩹 ${INJURIES[k].name}</span>`).join('')}</div>` : ''}
-        <div class="pc-stats"><span>AC ${Character.ac(c)}</span><span>ATK ${signed(Character.attackBonus(c))}</span><span>${Character.weapon(c).name}</span></div>`;
-      const btn = el('button', { class: 'btn small', onclick: () => UI.openSheet(i) }, c.skillPoints > 0 ? 'Sheet ★' : 'Sheet');
-      card.appendChild(btn);
+      const max = Character.maxHp(c);
+      const card = el('button', { class: 'pcard' + (c.hp <= 0 ? ' down' : '') + (Combat.st && Combat.current() === c && !Combat.st.over ? ' active' : ''), title: `${c.name} — open character sheet`, onclick: () => UI.openSheet(i) });
+      card.innerHTML = `${UI.medal(c)}
+        <div class="pc-name"><b>${esc(c.name)}</b><small>Level ${c.level} ${Character.describe(c)}</small></div>
+        <div class="pc-stats"><span class="hpv">${Icon('heart')} ${Math.max(0, c.hp)}/${max}</span><span class="fov">${Icon('focus')} ${c.focus}</span><span>${Icon('defend')} ${Character.ac(c)}</span></div>
+        ${c.corruption ? `<div class="corr" title="Corruption ${c.corruption}/10: the Hollow's hold on ${esc(c.name)}">${Array.from({ length: 10 }, (_, k) => `<i class="${k < c.corruption ? 'on' : ''}"></i>`).join('')}</div>` : ''}
+        ${(c.injuries || []).length ? `<div class="inj">${c.injuries.map(k => `<span title="${INJURIES[k].desc}">${INJURIES[k].name}</span>`).join('')}</div>` : ''}`;
+      const prev = UI._hhp[c.id];
+      if (prev !== undefined && prev !== c.hp && !UI.fast) {
+        const d = c.hp - prev;
+        if (d < 0) card.classList.add('hit');
+        const f = el('div', { class: 'floater' + (d > 0 ? ' heal' : '') }, d > 0 ? '+' + d : String(d));
+        f.style.left = '38px'; f.style.top = '10px';
+        card.appendChild(f);
+      }
+      UI._hhp[c.id] = c.hp;
       box.appendChild(card);
     });
-    const packItems = Object.keys(G.pack).filter(k => G.pack[k] > 0);
-    const pack = el('div', { class: 'pack' }, `<h4>Pack</h4>${packItems.length ? packItems.map(k => `<div>${ITEMS[k].name} ×${G.pack[k]}</div>`).join('') : '<div class="muted">Empty</div>'}${G.stash.length ? `<h4>Unequipped gear</h4>${G.stash.map(k => `<div>${ITEMS[k].name}</div>`).join('')}` : ''}`);
-    box.appendChild(pack);
   },
 
   /* ---------------- Story ---------------- */
   renderScene({ id, title, text, choices, notes, ending, vote }) {
     UI.show('#game-screen');
+    document.body.classList.add('in-game');
     UI.renderParty();
     $('#combat').classList.add('hidden');
     $('#story').classList.remove('hidden');
     const t = $('#story-title');
     t.textContent = title || '';
+    const kick = UI.kicker(id);
+    $('#story-kicker').textContent = kick && kick.toLowerCase() !== String(title || '').toLowerCase() ? kick : '';
     const body = $('#story-text');
     body.innerHTML = text || '';
     body.classList.remove('fade-in'); void body.offsetWidth; body.classList.add('fade-in');
-    if (typeof Art !== 'undefined') $('#story-art').innerHTML = Art.scene(id);
+    UI.setBackdrop(id);
     if (typeof Sound !== 'undefined') { Sound.ambient(Art.keyFor(id)); if (ending) Sound.play(ending === 'victory' ? 'victory' : 'defeat'); }
     $('#story-notes').innerHTML = UI.notesHtml(notes);
     const box = $('#story-choices');
@@ -107,11 +146,11 @@ const UI = {
       choices = choices.concat([{ label: 'Do something else…', hint: 'Describe your own action — the AI game master will judge it', ui: 'ai' }]);
     }
     UI._vote = vote ? { picks: [] } : null;
-    if (vote) box.appendChild(el('div', { class: 'vote-banner' }, `🗳️ <b>${esc(G.party[0].name)}</b>, choose what you think you should do. Then <b>${esc(G.party[1].name)}</b> chooses. If you disagree, you'll argue it out.`));
+    if (vote) box.appendChild(el('div', { class: 'vote-banner' }, `${Icon('vote')} <b>${esc(G.party[0].name)}</b>, choose what you think you should do. Then <b>${esc(G.party[1].name)}</b> chooses. If you disagree, you'll argue it out.`));
     choices.forEach(ch => {
-      const b = el('button', { class: 'choice' + (ch.locked ? ' locked' : '') + (ch.check ? ' has-check' : '') + (ch.combat ? ' has-combat' : '') + (ch.hollow ? ' hollow-choice' : ''), disabled: ch.locked ? 'disabled' : undefined });
-      const icon = ch.hollow ? '🌫️' : ch.combat ? '⚔️' : ch.check ? '🎲' : ch.ui === 'ai' ? '✍️' : ch.ui === 'shop' ? '' : '➤';
-      b.innerHTML = `<span class="c-label">${icon ? `<span class="c-icon">${icon}</span>` : ''}${ch.label}</span>${ch.hint || ch.lockReason ? `<span class="c-hint">${ch.locked ? '🔒 ' : ''}${ch.lockReason || ch.hint}</span>` : ''}`;
+      const b = el('button', { class: 'choice' + (ch.locked ? ' locked' : '') + (ch.check ? ' has-check' : '') + (ch.combat ? ' has-combat' : '') + (ch.puzzle ? ' has-puzzle' : '') + (ch.hollow ? ' hollow-choice' : ''), disabled: ch.locked ? 'disabled' : undefined });
+      const label = UI.stripEmoji(ch.label), hint = UI.stripEmoji(ch.lockReason || ch.hint || '');
+      b.innerHTML = `<span class="c-icon">${Icon(ch.locked ? 'lock' : UI.choiceIcon(ch))}</span><span class="c-label">${label}</span>${hint ? `<span class="c-hint">${hint}</span>` : ''}`;
       b.addEventListener('click', () => {
         if (UI._vote && !ch.ui) {
           const v = UI._vote;
@@ -119,7 +158,7 @@ const UI = {
           if (v.picks.length === 1) {
             b.classList.add('voted');
             b.querySelector('.c-label').insertAdjacentHTML('beforeend', ` <span class="vote-tag">${esc(G.party[0].name)}</span>`);
-            box.querySelector('.vote-banner').innerHTML = `🗳️ Now <b>${esc(G.party[1].name)}</b>, what do you think?`;
+            box.querySelector('.vote-banner').innerHTML = `${Icon('vote')} Now <b>${esc(G.party[1].name)}</b>, what do you think?`;
             return;
           }
           box.querySelectorAll('button').forEach(x => { x.disabled = true; });
@@ -132,6 +171,43 @@ const UI = {
     });
     UI.scrollStoryTop();
     UI.pace(body, box);
+  },
+
+  stripEmoji(s) { return String(s).replace(/^\s*(?:[←-⇿☀-➿⭐]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|\uD83E[\uDC00-\uDFFF])[️‍]*\s*/, ''); },
+
+  choiceIcon(ch) {
+    if (ch.icon) return ch.icon;
+    if (ch.hollow) return 'hollow';
+    if (ch.combat) return 'battle';
+    if (ch.puzzle) return ch.puzzle.type === 'dice' ? 'dice' : ch.puzzle.type === 'bells' ? 'bell' : ch.puzzle.type === 'whodunit' ? 'mask' : ch.puzzle.type === 'code' ? 'lock' : ch.puzzle.type === 'cipher' ? 'scroll' : 'puzzle';
+    if (ch.check) return 'dice';
+    if (ch.ui === 'ai') return 'quill';
+    if (ch.ui === 'shop') return 'shop';
+    if (ch.ui === 'newgame') return 'axe';
+    const l = String(ch.label);
+    if (/Travel to/.test(l)) { const r = Object.keys(REGIONS).find(k => l.includes(REGIONS[k].name)); return r || 'compass'; }
+    if (/March on/.test(l)) return 'fortress';
+    if (/Rest/.test(l)) return 'rest';
+    if (/healer/.test(l)) return 'heal';
+    if (/chapel|Pray/.test(l)) return 'candle';
+    if (/Keeper/.test(l)) return 'scroll';
+    if (/Dice/.test(l)) return 'dice';
+    if (/Leave|road|Return|Descend|Take the|Continue|Back/.test(l)) return 'next';
+    return 'chevron';
+  },
+
+  /* A short location label shown above the scene title */
+  kicker(id) {
+    if (!G || !id) return '';
+    const pre = id.split('_')[0];
+    if (REGIONS[pre]) return REGIONS[pre].name.replace(/^the /, '');
+    if (pre === 'fin') return cap(V().stronghold.replace(/^the /, ''));
+    if (pre === 'end') return 'The end of the tale';
+    if (pre === 'pro') return 'Prologue';
+    if (/^(hub|bg|villain|siege|camp)/.test(id)) return 'Hearthmoor';
+    if (pre === 'int' || id === 'vision' || id === 'road' || id === 'bounty') return 'On the road';
+    if (id === 'raid_battle') return 'On the road';
+    return '';
   },
 
   /* Storyteller pacing: paragraphs arrive one by one; click to skip. */
@@ -161,7 +237,7 @@ const UI = {
     const box = $('#story-choices');
     box.innerHTML = '';
     const panel = el('div', { class: 'check-panel ai-panel' });
-    panel.innerHTML = `<div class="check-head"><b>✍️ What do you do?</b><span>Describe an action in a sentence. The game master will decide what it takes.</span></div>`;
+    panel.innerHTML = `<div class="check-head"><b>${Icon('quill')} What do you do?</b><span>Describe an action in a sentence. The game master will decide what it takes.</span></div>`;
     let actor = alive()[0] || G.party[0];
     if (G.party.length > 1) {
       const who = el('div', { class: 'who' });
@@ -206,13 +282,13 @@ const UI = {
 
   openMap() {
     if (!G) return;
-    UI.modal(`<div class="journal"><h2>🗺️ The Valley</h2>${Art.map()}<p class="muted small">The Keeper's Map marks three places. The grey haze spreads from ${V().stronghold} as Doom rises.</p></div>`);
+    UI.modal(`<div class="journal"><h2>${Icon('map')} The Valley</h2>${Art.map()}<p class="muted small">The Keeper's Map marks three places. The grey haze spreads from ${V().stronghold} as Doom rises.</p></div>`);
   },
 
   openSettings() {
     const wrap = el('div', { class: 'journal' });
     const render = () => {
-      wrap.innerHTML = '<h2>⚙️ Settings</h2>';
+      wrap.innerHTML = `<h2>${Icon('gear')} Settings</h2>`;
       [['sfx', 'Sound effects', 'Dice, blows, chimes — all synthesized in your browser.'], ['music', 'Ambient music', 'A quiet drone that changes with the place you\'re in.'], ['pacing', 'Storyteller pacing', 'Story paragraphs arrive one at a time. Click the text to skip ahead.']].forEach(([k, label, desc]) => {
         const row = el('label', { class: 'setting' }, `<input type="checkbox" ${Settings.data[k] ? 'checked' : ''}> <span><b>${label}</b><small>${desc}</small></span>`);
         row.querySelector('input').addEventListener('change', e => {
@@ -223,7 +299,7 @@ const UI = {
         wrap.appendChild(row);
       });
       const ai = el('div', { class: 'ai-settings' });
-      ai.innerHTML = `<h3>✍️ AI Game Master <small class="muted">(optional)</small></h3>
+      ai.innerHTML = `<h3>AI Game Master <small class="muted">(optional)</small></h3>
         <p class="muted small">Adds a "Do something else…" option to scenes: type any action and Claude (${AI_MODEL}) decides which skill it needs and how hard it is, and narrates the result. It needs your own Anthropic API key, which is stored only in this browser and sent only to api.anthropic.com. Each attempt is a small paid API call on your account. Anyone using this browser can use the key — don't enable it on a shared computer.</p>`;
       const en = el('label', { class: 'setting' }, `<input type="checkbox" ${AI.cfg.enabled ? 'checked' : ''}> <span><b>Enable the AI game master</b></span>`);
       en.querySelector('input').addEventListener('change', e => { AI.cfg.enabled = e.target.checked; AI.save(); });
@@ -288,8 +364,8 @@ const UI = {
       odds.textContent = need <= 2 ? 'Odds: excellent' : need <= 8 ? 'Odds: good' : need <= 12 ? 'Odds: risky' : 'Odds: long shot';
     };
     const odds = el('div', { class: 'odds muted' });
-    const dieBox = el('div', { class: 'die-box' }, `<div class="d20" id="d20"><span>?</span></div>`);
-    const rollBtn = el('button', { class: 'btn primary roll-btn' }, '🎲 Roll the d20');
+    const dieBox = el('div', { class: 'die-box' }, UI.d20('?', '', 'd20'));
+    const rollBtn = el('button', { class: 'btn primary big roll-btn' }, `${Icon('dice')} Roll the d20`);
     rollBtn.addEventListener('click', () => {
       rollBtn.disabled = true;
       who.querySelectorAll('button').forEach(b => { b.disabled = true; });
@@ -336,12 +412,12 @@ const UI = {
     if (ctx && ctx.roll !== undefined && ctx.dc !== undefined) {
       const res = ctx.crit ? 'Critical success!' : ctx.fumble ? 'Critical failure!' : ctx.bought === 'Hollow' ? 'Success — the Hollow\'s gift' : ctx.bought ? `Success at a cost: ${ctx.bought}` : ctx.success ? 'Success!' : 'Failure';
       panel.appendChild(el('div', { class: 'roll-result ' + (ctx.bought === 'Hollow' ? 'hollow' : ctx.success ? 'good' : 'bad') },
-        `<div class="d20 small ${ctx.roll === 20 ? 'nat20' : ctx.roll === 1 ? 'nat1' : 'landed'}"><span>${ctx.roll}</span></div>
+        `${UI.d20(ctx.roll, 'small ' + (ctx.roll === 20 ? 'nat20' : ctx.roll === 1 ? 'nat1' : 'landed'))}
          <div><b>${res}</b><br><small>${esc(ctx.char.name)} rolled ${ctx.roll}${ctx.rerolled ? ' (Lucky reroll)' : ''} ${signed(ctx.total - ctx.roll - ctx.focusRoll - (ctx.helpBonus || 0))}${ctx.focusRoll ? ` +${ctx.focusRoll} Focus` : ''}${ctx.helpBonus ? ` +${ctx.helpBonus} help` : ''} = <b>${ctx.total}</b> vs DC ${ctx.dc}</small></div>`));
     }
     if (text) panel.appendChild(el('div', { class: 'outcome-text fade-in' }, text));
     if (notes && notes.length) panel.appendChild(el('div', {}, UI.notesHtml(notes)));
-    const btn = el('button', { class: 'btn primary' }, 'Continue ➤');
+    const btn = el('button', { class: 'btn primary' }, `Continue ${Icon('next')}`);
     btn.addEventListener('click', () => { btn.disabled = true; onContinue(); });
     panel.appendChild(btn);
     box.appendChild(panel);
@@ -354,13 +430,13 @@ const UI = {
     box.innerHTML = '';
     const panel = el('div', { class: 'outcome fork' + (hollow ? ' hollow' : '') });
     if (ctx && ctx.roll !== undefined && ctx.dc !== undefined) {
-      panel.appendChild(el('div', { class: 'roll-result bad' }, `<div class="d20 small landed"><span>${ctx.roll}</span></div><div><b>${ctx.partial ? 'Narrow miss' : 'Failure'}</b><br><small>${esc(ctx.char.name)} rolled ${ctx.roll} ${signed(ctx.total - ctx.roll - ctx.focusRoll - (ctx.helpBonus || 0))}${ctx.focusRoll ? ` +${ctx.focusRoll} Focus` : ''}${ctx.helpBonus ? ` +${ctx.helpBonus} help` : ''} = <b>${ctx.total}</b> vs DC ${ctx.dc}</small></div>`));
+      panel.appendChild(el('div', { class: 'roll-result bad' }, `${UI.d20(ctx.roll, 'small landed')}<div><b>${ctx.partial ? 'Narrow miss' : 'Failure'}</b><br><small>${esc(ctx.char.name)} rolled ${ctx.roll} ${signed(ctx.total - ctx.roll - ctx.focusRoll - (ctx.helpBonus || 0))}${ctx.focusRoll ? ` +${ctx.focusRoll} Focus` : ''}${ctx.helpBonus ? ` +${ctx.helpBonus} help` : ''} = <b>${ctx.total}</b> vs DC ${ctx.dc}</small></div>`));
     }
     if (notes && notes.length) panel.appendChild(el('div', {}, UI.notesHtml(notes)));
     panel.appendChild(el('div', { class: 'fork-head' }, `<b>${heading}</b>`));
     if (text) panel.appendChild(el('div', { class: 'outcome-text' }, P(text)));
     options.forEach(o => {
-      const b = el('button', { class: 'choice' + (o.hollow ? ' hollow-choice' : '') }, `<span class="c-label">${o.hollow ? '<span class="c-icon">🌫️</span>' : '<span class="c-icon">➤</span>'}${o.label}</span>${o.desc ? `<span class="c-hint">${o.desc}</span>` : ''}`);
+      const b = el('button', { class: 'choice' + (o.hollow ? ' hollow-choice' : '') }, `<span class="c-icon">${Icon(o.hollow ? 'hollow' : 'chevron')}</span><span class="c-label">${o.label}</span>${o.desc ? `<span class="c-hint">${o.desc}</span>` : ''}`);
       b.addEventListener('click', () => { box.querySelectorAll('button').forEach(x => { x.disabled = true; }); if (typeof Sound !== 'undefined') Sound.play(o.hollow ? 'hollow' : 'click'); o.run(); });
       panel.appendChild(b);
     });
@@ -376,95 +452,115 @@ const UI = {
     const c = $('#combat');
     const wasHidden = c.classList.contains('hidden');
     c.classList.remove('hidden');
-    if (wasHidden && window.innerWidth < 900 && !UI.fast) c.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (wasHidden) {
+      UI._ehp = {};
+      $('#combat-title').textContent = st.enemies.some(e => e.boss) ? st.enemies.find(e => e.boss).name : st.enemies.length === 1 ? st.enemies[0].name : 'Steel is drawn';
+      if (!UI.fast) window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
     const heroName = id => { const h = G.party.find(p => p.id === id); return h ? esc(h.name) : 'someone'; };
+    const act2 = (icon, title, sub, cls = '', attrs = {}) => el('button', Object.assign({ class: 'btn act ' + cls }, attrs), `<span class="ai">${Icon(icon)}</span><span>${title}</span><small>${sub}</small>`);
     // enemies
     const en = $('#enemies');
     en.innerHTML = '';
     const p = st.pending;
     const targetable = e => e.hp > 0 && p && (p.needs === 'enemy' || (p.needs === 'interruptible' && Combat.interruptible().includes(e)));
+    UI._ehp = UI._ehp || {};
     st.enemies.forEach(e => {
-      const pct = Math.max(0, (e.hp / e.maxHp) * 100);
+      const frac = Math.max(0, e.hp / e.maxHp);
       const card = el('div', { class: 'ecard' + (e.hp <= 0 ? ' dead' : '') + (targetable(e) ? ' targetable' : '') + (e.boss ? ' boss' : '') });
       const it = e.intent;
       let intent = '';
       if (e.hp > 0 && it && !st.over) {
         const map = {
-          attack: ['⚔️', `Attacks ${heroName(it.target)}`, ''],
-          heavy: ['💥', `Winding up a crushing blow on ${heroName(it.target)} (double damage)`, 'danger'],
-          burst: ['🌫️', 'Gathering the Hollow — will strike everyone', 'danger'],
-          sweep: ['🌀', 'Coiling to sweep the whole party', 'danger'],
-          heal: ['✚', 'Preparing to heal', 'danger'],
-          stunned: ['💫', 'Staggered — will lose its turn', 'calm'],
+          attack: ['attack', `Attacks ${heroName(it.target)}`, ''],
+          heavy: ['heavy', `Crushing blow on ${heroName(it.target)} — double damage`, 'danger'],
+          burst: ['burst', 'Gathering the Hollow — will hit everyone', 'danger'],
+          sweep: ['sweep', 'Coiling to sweep the whole party', 'danger'],
+          heal: ['heal', 'Preparing to heal', 'danger'],
+          stunned: ['stunned', 'Staggered — loses its turn', 'calm'],
         };
         const m = map[it.type] || map.attack;
-        intent = `<div class="intent ${m[2]}">${m[0]} ${m[1]}</div>`;
+        intent = `<div class="intent ${m[2]}">${Icon(m[0])}<span>${m[1]}</span></div>`;
       }
-      const statuses = Object.keys(e.status || {}).filter(k => e.status[k] && STATUS_INFO[k]).map(k => `<span title="${STATUS_INFO[k].desc}">${STATUS_INFO[k].icon}</span>`).join('');
-      card.innerHTML = `<div class="e-name">${e.boss ? '💀 ' : ''}${esc(e.name)} ${statuses}</div>
-        <div class="bar ehp"><div style="width:${pct}%"></div><span>${e.yielded ? 'yielded' : Math.max(0, e.hp) + ' / ' + e.maxHp}</span></div>
-        <div class="e-stats">AC ${Combat.enemyAC(e)} · ATK ${signed(e.atk)}${e.hollow ? ' · <span title="Takes double radiant damage">Hollow</span>' : ''}${e.fire ? ' · Fire' : ''}</div>${intent}`;
+      const statuses = Object.keys(e.status || {}).filter(k => e.status[k] && STATUS_INFO[k]).map(k => `<span title="${STATUS_INFO[k].name}: ${STATUS_INFO[k].desc}">${Icon(k)}</span>`).join('');
+      const R = 56, L = 2 * Math.PI * R;
+      const hpCol = e.hollow ? '#c9ced6' : frac > 0.5 ? '#ff5a72' : frac > 0.25 ? '#ff8a4a' : '#ff3a3a';
+      card.innerHTML = `<div class="eframe"><svg class="erings" viewBox="0 0 120 120"><circle cx="60" cy="60" r="${R}" stroke="rgba(0,0,0,.55)" stroke-width="7"/><circle cx="60" cy="60" r="${R}" stroke="${hpCol}" stroke-width="5" stroke-linecap="round" stroke-dasharray="${(L * frac).toFixed(1)} ${L.toFixed(1)}" style="filter:drop-shadow(0 0 6px ${hpCol})"/></svg>${EnemyPortrait(e)}</div>
+        <div class="e-name">${esc(e.name)}</div>
+        <div class="e-stats">${e.yielded ? 'Yielded' : `${Math.max(0, e.hp)}/${e.maxHp} HP`} · AC ${Combat.enemyAC(e)}${e.hollow ? ' · Hollow' : ''}${e.fire ? ' · Fire' : ''}</div>
+        ${statuses ? `<div class="estat">${statuses}</div>` : ''}${intent}`;
+      const prev = UI._ehp[e.uid];
+      if (prev !== undefined && prev > e.hp && !UI.fast) {
+        card.classList.add('hit');
+        const d = prev - e.hp;
+        card.querySelector('.eframe').appendChild(el('div', { class: 'floater' + (d >= e.maxHp * 0.3 ? ' big' : '') }, '−' + d));
+      } else if (prev !== undefined && prev < e.hp && !UI.fast) {
+        card.querySelector('.eframe').appendChild(el('div', { class: 'floater heal' }, '+' + (e.hp - prev)));
+      }
+      UI._ehp[e.uid] = e.hp;
       if (targetable(e)) card.addEventListener('click', () => Combat.pickTarget(e));
       en.appendChild(card);
     });
     // log
     const log = $('#combat-log');
-    log.innerHTML = st.log.slice(-40).map(l => `<div class="log ${l.kind}">${l.text}</div>`).join('');
+    log.innerHTML = st.log.slice(-40).map(l => `<div class="log ${l.kind}">${String(l.text).replace(/🎲(\d+)/g, '<span class="rc">$1</span>')}</div>`).join('');
     log.scrollTop = log.scrollHeight;
     // actions
     const act = $('#combat-actions');
     act.innerHTML = '';
     if (st.over) {
       const msg = st.result === 'win' ? (st.surrendered ? 'They yield!' : 'Victory!') : st.result === 'flee' ? 'You escaped.' : 'Defeat…';
-      act.appendChild(el('div', { class: 'turn-label ' + (st.result === 'win' ? 'good' : 'bad') }, msg));
-      const b = el('button', { class: 'btn primary' }, 'Continue ➤');
+      act.appendChild(el('div', { class: 'turn-label ' + (st.result === 'win' ? 'good' : 'bad') }, `${Icon(st.result === 'win' ? 'trophy' : st.result === 'flee' ? 'flee' : 'doom')} ${msg}`));
+      const b = el('button', { class: 'btn primary' }, `Continue ${Icon('next')}`);
+      b.style.alignSelf = 'flex-start';
       b.addEventListener('click', () => { b.disabled = true; Combat.finish(); });
       act.appendChild(b);
       return;
     }
     if (st.temptFor) {
       const h = st.temptFor;
-      const box = el('div', { class: 'tempt' }, `<div class="turn-label">🌫️ ${esc(h.name)} is dying…</div><p>The noise of the battle fades. Everything goes grey and soft and quiet. Then a voice, like ash falling on snow: <i>"Get up. I can make you stand. I can make it stop hurting. All you have to do is let me in."</i></p>`);
+      const box = el('div', { class: 'tempt' }, `<div class="turn-label">${Icon('hollow')} ${esc(h.name)} is dying…</div><p>The noise of the battle fades. Everything goes grey and soft and quiet. Then a voice, like ash falling on snow: <i>"Get up. I can make you stand. I can make it stop hurting. All you have to do is let me in."</i></p>`);
       const row = el('div', { class: 'action-row' });
       const n = st.enemies.some(e => e.boss) ? 3 : 2;
-      row.appendChild(el('button', { class: 'btn act hollow-choice', onclick: () => Combat.answerTemptation(true) }, `🌫️ Let the Hollow in<small>Rise with half HP. +${n} Corruption.</small>`));
-      row.appendChild(el('button', { class: 'btn act', onclick: () => Combat.answerTemptation(false) }, `✋ Refuse<small>Stay down and trust your friends${solo() ? ' — or fall' : ''}.</small>`));
+      row.appendChild(act2('hollow', 'Let the Hollow in', `Rise with half HP. +${n} Corruption.`, 'hollow-choice', { onclick: () => Combat.answerTemptation(true) }));
+      row.appendChild(act2('interrupt', 'Refuse', `Stay down and trust your friends${solo() ? ' — or fall' : ''}.`, '', { onclick: () => Combat.answerTemptation(false) }));
       box.appendChild(row);
       act.appendChild(box);
       return;
     }
     const hero = Combat.current();
     if (st.busy || !hero) {
-      act.appendChild(el('div', { class: 'turn-label' }, lastRoll ? `🎲 ${lastRoll}` : 'The enemy moves…'));
+      act.appendChild(el('div', { class: 'turn-label' }, 'The enemy moves…'));
+      if (lastRoll && !UI.fast) act.appendChild(el('div', { class: 'die-box' }, UI.d20(lastRoll, 'small landed')));
       return;
     }
-    act.appendChild(el('div', { class: 'turn-label' }, `Round ${st.round} — <b>${esc(hero.name)}</b>'s turn`));
+    act.appendChild(el('div', { class: 'turn-label' }, `${Crest(hero, 34)} <span>Round ${st.round} — <b>${esc(hero.name)}</b>'s turn</span>`));
     if (p) {
-      act.appendChild(el('div', { class: 'muted' }, p.needs === 'ally' ? 'Choose an ally:' : p.needs === 'interruptible' ? 'Choose the enemy to interrupt (highlighted above).' : 'Choose a target above.'));
-      if (p.needs === 'ally') G.party.forEach(x => act.appendChild(el('button', { class: 'btn', onclick: () => Combat.pickTarget(x) }, `${esc(x.name)} (${Math.max(0, x.hp)} HP)`)));
-      act.appendChild(el('button', { class: 'btn ghost', onclick: () => Combat.cancelTarget() }, 'Cancel'));
+      act.appendChild(el('div', { class: 'muted' }, p.needs === 'ally' ? 'Choose an ally:' : p.needs === 'interruptible' ? 'Choose the enemy to interrupt — it glows above.' : 'Choose a target — it glows above.'));
+      const row = el('div', { class: 'puzzle-tools' });
+      if (p.needs === 'ally') G.party.forEach(x => row.appendChild(el('button', { class: 'btn', onclick: () => Combat.pickTarget(x) }, `${Icon('heart')} ${esc(x.name)} (${Math.max(0, x.hp)} HP)`)));
+      row.appendChild(el('button', { class: 'btn ghost', onclick: () => Combat.cancelTarget() }, 'Cancel'));
+      act.appendChild(row);
       return;
     }
     const row = el('div', { class: 'action-row' });
     const w = Character.weapon(hero);
-    row.appendChild(el('button', { class: 'btn act', onclick: () => Combat.act('attack') }, `⚔️ Attack<small>${w.name} ${w.dmg}${signed(Character.damageBonus(hero))}</small>`));
-    if (Combat.interruptible().length) row.appendChild(el('button', { class: 'btn act interrupt', onclick: () => Combat.act('interrupt') }, `✋ Interrupt<small>Attack at −2 for half damage. A hit breaks a wind-up.</small>`));
+    row.appendChild(act2('attack', 'Attack', `${w.name} · ${w.dmg}${signed(Character.damageBonus(hero))}`, '', { onclick: () => Combat.act('attack') }));
+    if (Combat.interruptible().length) row.appendChild(act2('interrupt', 'Interrupt', 'Attack at −2, half damage. A hit breaks a wind-up.', 'interrupt', { onclick: () => Combat.act('interrupt') }));
     Character.fx(hero).abilities.forEach(id => {
       const ab = ABILITIES[id];
       const ok = hero.focus >= ab.cost;
-      row.appendChild(el('button', { class: 'btn act ability' + (ab.corrupting ? ' hollow-choice' : ''), disabled: ok ? undefined : 'disabled', title: ab.desc, onclick: () => Combat.act('ability', id) },
-        `${ab.corrupting ? '🌫️' : '✨'} ${ab.name}<small>${ab.cost ? ab.cost + ' Focus' : 'Free'} · ${ab.desc}</small>`));
+      row.appendChild(act2(ab.corrupting ? 'hollow' : ab.kind === 'heal' ? 'heal' : ab.kind === 'buff' ? 'star' : 'ability', ab.name, `${ab.cost ? ab.cost + ' Focus' : 'Free'} · ${ab.desc}`, 'ability' + (ab.corrupting ? ' hollow-choice' : ''), { disabled: ok ? undefined : 'disabled', title: ab.desc, onclick: () => Combat.act('ability', id) }));
     });
     st.actions.filter(a => !a.used && (!a.req || a.req(hero))).forEach(a => {
-      row.appendChild(el('button', { class: 'btn act scene', onclick: () => Combat.act('scene', a.key) }, `🌟 ${a.label}<small>${a.skill ? `${SKILLS[a.skill] ? SKILLS[a.skill].name : STAT_NAMES[a.skill]} ${signed(Character.checkBonus(hero, a.skill).total)} vs DC ${a.dc} · ` : ''}${a.desc}</small>`));
+      row.appendChild(act2('scene', a.label, `${a.skill ? `${SKILLS[a.skill] ? SKILLS[a.skill].name : STAT_NAMES[a.skill]} ${signed(Character.checkBonus(hero, a.skill).total)} vs DC ${a.dc} · ` : ''}${a.desc}`, 'scene', { onclick: () => Combat.act('scene', a.key) }));
     });
     Object.keys(G.pack).filter(k => G.pack[k] > 0).forEach(k => {
-      row.appendChild(el('button', { class: 'btn act item', onclick: () => Combat.act('item', k) }, `🧪 ${ITEMS[k].name} ×${G.pack[k]}<small>${ITEMS[k].desc || ''}</small>`));
+      row.appendChild(act2('potion', `${ITEMS[k].name} ×${G.pack[k]}`, ITEMS[k].desc || '', 'item', { onclick: () => Combat.act('item', k) }));
     });
-    row.appendChild(el('button', { class: 'btn act', onclick: () => Combat.act('defend') }, `🛡️ Defend<small>+3 AC until your next turn</small>`));
-    if (st.fleeable) row.appendChild(el('button', { class: 'btn act flee', onclick: () => Combat.act('flee') }, `🏃 Flee<small>Acrobatics vs DC ${st.fleeDC}</small>`));
+    row.appendChild(act2('defend', 'Defend', '+3 AC until your next turn', '', { onclick: () => Combat.act('defend') }));
+    if (st.fleeable) row.appendChild(act2('flee', 'Flee', `Acrobatics vs DC ${st.fleeDC}`, 'flee', { onclick: () => Combat.act('flee') }));
     act.appendChild(row);
-    if (lastRoll && !UI.fast) act.prepend(el('div', { class: 'd20 small landed float' }, `<span>${lastRoll}</span>`));
   },
   hideCombat() { $('#combat').classList.add('hidden'); $('#story').classList.remove('hidden'); },
 
@@ -496,18 +592,18 @@ const UI = {
         return `<div class="sk ${prof ? 'prof' : ''}"><span>${SKILLS[k].name}</span><b>${signed(b)}</b></div>`;
       }).join('');
       wrap.innerHTML = `
-        <h2>${race.icon}${cls.icon} ${esc(c.name)}</h2>
-        <div class="muted">Level ${c.level} ${race.name} ${cls.name} · XP ${c.xp}${c.level < MAX_LEVEL ? ' / ' + XP_TABLE[c.level] : ''}</div>
+        <div class="sheet-head">${UI.medal(c, 84)}<div><h2>${esc(c.name)}</h2>
+        <div class="muted">Level ${c.level} ${race.name} ${cls.name} · XP ${c.xp}${c.level < MAX_LEVEL ? ' / ' + XP_TABLE[c.level] : ''}</div></div></div>
         <p class="trait"><b>${race.name}:</b> ${race.trait}</p>
-        ${c.background ? `<p class="trait"><b>${BACKGROUNDS[c.background].icon} ${BACKGROUNDS[c.background].name}:</b> ${BACKGROUNDS[c.background].desc}</p>` : ''}
+        ${c.background ? `<p class="trait"><b>${BACKGROUNDS[c.background].name}:</b> ${BACKGROUNDS[c.background].desc}</p>` : ''}
         ${!solo() && G.bond !== undefined ? `<p class="trait"><b>Bond — ${bondName()}:</b> ${G.bond}/10${G.bond >= 8 ? ' · Fight as One unlocked' : G.bond <= 2 ? ' · Fraying: no helping each other' : ''}</p>` : ''}
         ${c.corruption ? `<p class="trait hollow-text"><b>Corruption ${c.corruption}/10.</b> ${c.corruption >= 7 ? 'The Hollow calls them heir. Their reflection is grey.' : c.corruption >= 5 ? 'Their eyes have begun to grey (−1 Wisdom & Charisma checks).' : c.corruption >= 3 ? 'Grey veins under the skin. Grey Fire answers their call.' : 'A chill that never quite leaves.'}</p>` : ''}
         ${(c.injuries || []).length ? `<p class="trait"><b>Injuries:</b> ${c.injuries.map(k => `${INJURIES[k].name} (${INJURIES[k].desc})`).join('; ')}. <span class="muted">Treat them at the Hearthmoor healer.</span></p>` : ''}
         <div class="stat-row">${STATS.map(s => `<div class="stat"><small>${s.toUpperCase()}</small><b>${c.stats[s]}</b><span>${signed(mod(c.stats[s]))}</span></div>`).join('')}</div>
         <div class="derived">
-          <span>❤️ HP ${c.hp}/${Character.maxHp(c)}</span><span>🛡️ AC ${Character.ac(c)}</span>
-          <span>⚔️ Attack ${signed(Character.attackBonus(c))}</span><span>💥 Damage ${Character.weapon(c).dmg}${signed(Character.damageBonus(c))}${fx.weaponDie ? '+' + fx.weaponDie : ''}</span>
-          <span>🔮 Focus ${c.focus}/${Character.maxFocus(c)}</span>${cls.spellStat ? `<span>✨ Spell attack ${signed(Character.spellAttack(c))}</span>` : ''}
+          <span>${Icon('heart')} HP ${c.hp}/${Character.maxHp(c)}</span><span>${Icon('defend')} AC ${Character.ac(c)}</span>
+          <span>${Icon('attack')} Attack ${signed(Character.attackBonus(c))}</span><span>${Icon('heavy')} Damage ${Character.weapon(c).dmg}${signed(Character.damageBonus(c))}${fx.weaponDie ? '+' + fx.weaponDie : ''}</span>
+          <span>${Icon('focus')} Focus ${c.focus}/${Character.maxFocus(c)}</span>${cls.spellStat ? `<span>${Icon('ability')} Spell attack ${signed(Character.spellAttack(c))}</span>` : ''}
         </div>
         <h3>Equipment</h3><div id="equip"></div>
         <h3>Skill Tree <span class="sp">${c.skillPoints} point${c.skillPoints === 1 ? '' : 's'} to spend</span></h3>
@@ -588,7 +684,7 @@ const UI = {
   openShop() {
     const wrap = el('div', { class: 'shop' });
     const render = () => {
-      wrap.innerHTML = `<h2>🛒 Market</h2><div class="muted">You have <b>${G.gold}</b> gold. Gear goes to your unequipped pile — equip it from a character sheet.</div>`;
+      wrap.innerHTML = `<h2>${Icon('shop')} Market</h2><div class="muted">You have <b>${G.gold}</b> gold. Gear goes to your unequipped pile — equip it from a character sheet.</div>`;
       const list = el('div', { class: 'shop-list' });
       SHOP_STOCK.forEach(id => {
         const it = ITEMS[id];
@@ -625,7 +721,7 @@ const UI = {
     const v = V();
     const fr = ['head', 'haft', 'rune'].map(k => `<li>${FRAGMENTS[k].name}: <b>${G.fragments[k] === 'party' ? 'in your hands' : G.fragments[k] === 'villain' ? 'held by ' + v.short : 'not yet found'}</b>${G.regions.find(r => G.fragLoc[r] === k) && G.fragments[k] === null ? ` <small>(somewhere in ${REGIONS[G.regions.find(r => G.fragLoc[r] === k)].name})</small>` : ''}</li>`).join('');
     const html = `<div class="journal">
-      <h2>📖 Journal</h2>
+      <h2>${Icon('book')} Journal</h2>
       ${Art.map()}
       <h3>The Enemy</h3><p><b>${v.name}</b> — ${v.look}. ${v.motive}</p>
       <p class="muted">${v.short}'s lieutenant: ${v.lieutenant.name} ${v.lieutenant.title}${G.rival.slain ? ' (slain)' : G.rival.spared ? ' (spared)' : ''}.</p>
@@ -640,21 +736,21 @@ const UI = {
 
   openArchive() {
     const a = Meta.load();
-    const ach = Object.keys(ACHIEVEMENTS).map(k => `<div class="ach ${a.achievements[k] ? 'got' : ''}"><b>${a.achievements[k] ? '🏆' : '🔒'} ${ACHIEVEMENTS[k].name}</b><small>${ACHIEVEMENTS[k].desc}${a.achievements[k] ? ' · ' + a.achievements[k] : ''}</small></div>`).join('');
-    const runs = a.runs.length ? a.runs.map(r => `<div class="run ${r.won ? 'won' : 'lost'}"><b>${r.won ? '⚒️' : '🌫️'} ${(SCENES[r.ending] && typeof SCENES[r.ending].title === 'string') ? SCENES[r.ending].title : r.ending}</b> <small>${r.date} · vs ${VILLAINS[r.villain] ? VILLAINS[r.villain].name : r.villain} · ${DIFFICULTIES[r.difficulty] ? DIFFICULTIES[r.difficulty].name : ''} · Doom ${r.doom}</small><div class="muted small">${r.heroes.map(h => `${esc(h.name)} the ${h.desc}${h.died ? ' (fell)' : ''}`).join(', ')}</div></div>`).join('') : '<p class="muted">No tales recorded yet. Every tale you finish will be written here.</p>';
+    const ach = Object.keys(ACHIEVEMENTS).map(k => `<div class="ach ${a.achievements[k] ? 'got' : ''}"><b>${Icon(a.achievements[k] ? 'trophy' : 'lock')} ${ACHIEVEMENTS[k].name}</b><small>${ACHIEVEMENTS[k].desc}${a.achievements[k] ? ' · ' + a.achievements[k] : ''}</small></div>`).join('');
+    const runs = a.runs.length ? a.runs.map(r => `<div class="run ${r.won ? 'won' : 'lost'}"><b>${Icon(r.won ? 'axe' : 'hollow')} ${(SCENES[r.ending] && typeof SCENES[r.ending].title === 'string') ? SCENES[r.ending].title : r.ending}</b> <small>${r.date} · vs ${VILLAINS[r.villain] ? VILLAINS[r.villain].name : r.villain} · ${DIFFICULTIES[r.difficulty] ? DIFFICULTIES[r.difficulty].name : ''} · Doom ${r.doom}</small><div class="muted small">${r.heroes.map(h => `${esc(h.name)} the ${h.desc}${h.died ? ' (fell)' : ''}`).join(', ')}</div></div>`).join('') : '<p class="muted">No tales recorded yet. Every tale you finish will be written here.</p>';
     const fallen = a.fallen.length ? `<h3>The Fallen</h3><p class="muted">${a.fallen.map(f => `${esc(f.name)} the ${f.desc}`).join(' · ')}</p>` : '';
     const heir = a.greyHeir ? `<p class="hollow-text"><b>${esc(a.greyHeir.name)}</b> took the Grey Crown in your last tale. They are out there, waiting.</p>` : '';
-    UI.modal(`<div class="journal"><h2>📜 The Keeper's Archive</h2>${heir}<h3>Achievements (${Object.keys(a.achievements).length}/${Object.keys(ACHIEVEMENTS).length})</h3><div class="ach-grid">${ach}</div><h3>Tales</h3>${runs}${fallen}</div>`);
+    UI.modal(`<div class="journal"><h2>${Icon('scroll')} The Keeper's Archive</h2>${heir}<h3>Achievements (${Object.keys(a.achievements).length}/${Object.keys(ACHIEVEMENTS).length})</h3><div class="ach-grid">${ach}</div><h3>Tales</h3>${runs}${fallen}</div>`);
   },
 
   openHelp() {
     UI.modal(`<div class="journal"><h2>How to Play</h2>
       <p>Florian's Axe is a choose-your-own-adventure for 1 or 2 players. Each tale is different: the villain, the opening, which three lands hide the axe's fragments, and the encounters on the road are all chosen at random — and your choices decide the rest.</p>
-      <h3>Choices & checks</h3><p>Choices marked 🎲 need a <b>skill check</b>: roll a d20 and add the character's stat modifier, proficiency, talents and gear. Meet or beat the DC to succeed. A natural 20 always succeeds; a natural 1 always fails. In a 2-player game, pick who attempts each check. You can spend 1 Focus to add +1d4 (Bards +1d6).</p>
-      <h3>Puzzles</h3><p>Choices marked 🧩 test <b>you</b>, not your hero: riddles, coded letters, rune locks, bell chants, a masquerade whodunit and dice games. They change every tale. Each has a 💡 hint you can earn with a skill roll, and you can always give up — the story carries on either way, but solving it yourself is better.</p>
+      <h3>Choices & checks</h3><p>Choices marked with the die need a <b>skill check</b>: roll a d20 and add the character's stat modifier, proficiency, talents and gear. Meet or beat the DC to succeed. A natural 20 always succeeds; a natural 1 always fails. In a 2-player game, pick who attempts each check. You can spend 1 Focus to add +1d4 (Bards +1d6).</p>
+      <h3>Puzzles</h3><p>Choices marked with the puzzle piece test <b>you</b>, not your hero: riddles, coded letters, rune locks, bell chants, a masquerade whodunit and dice games. They change every tale. Each has a hint you can earn with a skill roll, and you can always give up — the story carries on either way, but solving it yourself is better.</p>
       <h3>Narrow misses</h3><p>Miss a check by 3 or less and you can <b>succeed at a cost</b> — take a wound, lose time (Doom), gold or Focus — or accept the failure. In 2-player games, the other hero can <b>help</b> for +2, but shares the risk.</p>
-      <h3>Battles</h3><p>Choices marked ⚔️ start a battle. Every enemy shows its <b>intent</b> for the round — watch for 💥 crushing blows and 🌫️ Hollow bursts. <b>Defend</b> (+3 AC) against them, or <b>Interrupt</b> to break the wind-up. Each battlefield offers 🌟 <b>scene actions</b> — drop the chandelier, ring the bell. Critical hits stun, bleed or expose foes. Beaten enemies may surrender: spare, question or execute them. Losing usually doesn't end the game — it changes the story, and may leave lasting <b>injuries</b> (treat them at the healer). Only the final battle is to the death.</p>
-      <h3>The living world</h3><p>The villain acts while you travel — raiding places you haven't reached, attacking Hearthmoor, taking your friends. Each hero's <b>background</b> brings a personal quest that pays off at the end. In two-player games, some decisions are put to a <b>vote</b>; disagreements are argued out and strain your <b>bond</b>. Open the 🗺️ Map to see the valley and the Hollow's spreading haze. Finished tales are recorded in the <b>Keeper's Archive</b>, and their heroes may return.</p>
+      <h3>Battles</h3><p>Choices marked with crossed swords start a battle. Every enemy shows its <b>intent</b> for the round — watch for crushing blows and Hollow bursts. <b>Defend</b> (+3 AC) against them, or <b>Interrupt</b> to break the wind-up. Each battlefield offers <b>scene actions</b> — drop the chandelier, ring the bell. Critical hits stun, bleed or expose foes. Beaten enemies may surrender: spare, question or execute them. Losing usually doesn't end the game — it changes the story, and may leave lasting <b>injuries</b> (treat them at the healer). Only the final battle is to the death.</p>
+      <h3>The living world</h3><p>The villain acts while you travel — raiding places you haven't reached, attacking Hearthmoor, taking your friends. Each hero's <b>background</b> brings a personal quest that pays off at the end. In two-player games, some decisions are put to a <b>vote</b>; disagreements are argued out and strain your <b>bond</b>. Open the Map to see the valley and the Hollow's spreading haze. Finished tales are recorded in the <b>Keeper's Archive</b>, and their heroes may return.</p>
       <h3>The Hollow</h3><p>When you fail or fall, the Hollow may offer help. Accepting works — and adds <b>Corruption</b>. At 3 you can call Grey Fire and take dark shortcuts in the story; at 5 your eyes grey; at 7 the Hollow calls you its heir. Corruption changes how people see you, how the axe treats you, and how the tale can end. Pray at the chapel to cleanse it.</p>
       <h3>Growing stronger</h3><p>Earn XP from checks and battles. Each level grants more HP and a skill point to spend in your class's <b>skill tree</b> (open the character Sheet). Buy gear in Hearthmoor and equip it from the Sheet.</p>
       <h3>What matters</h3><p>Recover all three fragments to reforge the axe before the end. Allies you help will come to your aid. Learn the villain's secrets — with enough of them, you may end the war with words instead of steel. Watch the <b>Doom</b> meter: the Hollow spreads with time and failure.</p>
@@ -676,14 +772,14 @@ const UI = {
       root.appendChild(el('h2', {}, 'How many heroes?'));
       const row = el('div', { class: 'count-row' });
       [1, 2].forEach(n => row.appendChild(el('button', { class: 'big-card', onclick: () => { cr.count = n; UI.newDraft(); UI.renderCreation(); } },
-        `<div class="big-icon">${n === 1 ? '🧍' : '🧍🧍'}</div><b>${n === 1 ? 'Solo' : 'Two Players'}</b><small>${n === 1 ? 'One hero, one tale.' : 'Hot-seat: share one screen and take turns.'}</small>`)));
+        `<div class="big-icon">${Icon('human')}${n === 2 ? Icon('human') : ''}</div><b>${n === 1 ? 'Solo' : 'Two Players'}</b><small>${n === 1 ? 'One hero, one tale.' : 'Hot-seat: share one screen and take turns.'}</small>`)));
       root.appendChild(row);
       root.appendChild(el('h3', {}, 'Difficulty'));
       const drow = el('div', { class: 'count-row' });
       cr.difficulty = cr.difficulty || 'normal';
       const unl = Meta.unlocked();
       Object.keys(DIFFICULTIES).filter(k => unl.difficulties.includes(k)).forEach(k => drow.appendChild(el('button', { class: 'pick' + (cr.difficulty === k ? ' sel' : ''), onclick: () => { cr.difficulty = k; UI.renderCreation(); } },
-        `<b>${k === 'hardcore' ? '☠️ ' : k === 'story' ? '📖 ' : '⚔️ '}${DIFFICULTIES[k].name}</b><small>${DIFFICULTIES[k].desc}</small>`)));
+        `<div class="pick-icon">${Icon(k === 'hardcore' ? 'doom' : k === 'story' ? 'book' : k === 'mythic' ? 'star' : 'battle')}</div><b>${DIFFICULTIES[k].name}</b><small>${DIFFICULTIES[k].desc}</small>`)));
       root.appendChild(drow);
       root.appendChild(el('h3', {}, 'Legacy Gift'));
       root.appendChild(el('p', { class: 'muted' }, 'Gifts from the Keeper\'s Archive. Finish tales to unlock more.'));
@@ -692,7 +788,7 @@ const UI = {
       Object.keys(LEGACY_GIFTS).forEach(k => {
         const gft = LEGACY_GIFTS[k], ok = unl.gifts.includes(k);
         grow.appendChild(el('button', { class: 'pick' + (cr.gift === k ? ' sel' : ''), disabled: ok ? undefined : 'disabled', onclick: () => { cr.gift = k; UI.renderCreation(); } },
-          `<b>${ok ? '' : '🔒 '}${gft.name}</b><small>${gft.desc}</small>${ok ? '' : `<small class="muted">Unlock: ${gft.hint}</small>`}`));
+          `<div class="pick-icon">${Icon(ok ? 'star' : 'lock')}</div><b>${gft.name}</b><small>${gft.desc}</small>${ok ? '' : `<small class="muted">Unlock: ${gft.hint}</small>`}`));
       });
       root.appendChild(grow);
       return;
@@ -706,8 +802,8 @@ const UI = {
         `<b>${BONDS[k].name}</b><small class="bon">Starting bond ${BONDS[k].start}/10</small><small>${BONDS[k].desc}</small>`)));
       root.appendChild(g);
       const nav = el('div', { class: 'nav-row' });
-      nav.appendChild(el('button', { class: 'btn ghost', onclick: () => { cr.bondStep = false; cr.chars.pop(); cr.draft = cr.drafts[cr.idx]; UI.renderCreation(); } }, '← Back'));
-      nav.appendChild(el('button', { class: 'btn primary', disabled: cr.bondType ? undefined : 'disabled', onclick: () => Engine.newGame(cr.chars, { difficulty: cr.difficulty || 'normal', bondType: cr.bondType, gift: cr.gift }) }, 'Begin the tale ⚔️'));
+      nav.appendChild(el('button', { class: 'btn ghost', onclick: () => { cr.bondStep = false; cr.chars.pop(); cr.draft = cr.drafts[cr.idx]; UI.renderCreation(); } }, `${Icon('back')} Back`));
+      nav.appendChild(el('button', { class: 'btn primary', disabled: cr.bondType ? undefined : 'disabled', onclick: () => Engine.newGame(cr.chars, { difficulty: cr.difficulty || 'normal', bondType: cr.bondType, gift: cr.gift }) }, 'Begin the tale'));
       root.appendChild(nav);
       return;
     }
@@ -718,7 +814,7 @@ const UI = {
     input.addEventListener('input', () => { d.name = input.value; });
     nameRow.appendChild(el('label', {}, 'Name'));
     nameRow.appendChild(input);
-    nameRow.appendChild(el('button', { class: 'btn small ghost', onclick: () => { d.name = UI.randomName(); UI.renderCreation(); } }, '🎲 Random'));
+    nameRow.appendChild(el('button', { class: 'btn small ghost', onclick: () => { d.name = UI.randomName(); UI.renderCreation(); } }, `${Icon('dice')} Random`));
     root.appendChild(nameRow);
 
     root.appendChild(el('h3', {}, 'Race'));
@@ -727,7 +823,7 @@ const UI = {
       const r = RACES[id];
       const bonus = Object.keys(r.bonus).map(s => `${s.toUpperCase()} +${r.bonus[s]}`).join(', ');
       rg.appendChild(el('button', { class: 'pick' + (d.race === id ? ' sel' : ''), onclick: () => { d.race = id; UI.renderCreation(); } },
-        `<div class="pick-icon">${r.icon}</div><b>${r.name}</b><small class="bon">${bonus}</small><small>${r.trait}</small>`));
+        `<div class="pick-icon">${Icon(id)}</div><b>${r.name}</b><small class="bon">${bonus}</small><small>${r.trait}</small>`));
     });
     root.appendChild(rg);
 
@@ -736,7 +832,7 @@ const UI = {
     Object.keys(CLASSES).forEach(id => {
       const c = CLASSES[id];
       cg.appendChild(el('button', { class: 'pick' + (d.cls === id ? ' sel' : ''), onclick: () => { d.cls = id; UI.renderCreation(); } },
-        `<div class="pick-icon">${c.icon}</div><b>${c.name}</b><small class="bon">d${c.hd} HP · ${c.priority[0].toUpperCase()}</small><small>${c.desc}</small><small class="muted">Skills: ${c.skills.map(s => SKILLS[s].name).join(', ')}</small><small class="muted">Trees: ${c.tree.map(t => t.name).join(' / ')}</small>`));
+        `<div class="pick-icon">${Icon(id)}</div><b>${c.name}</b><small class="bon">d${c.hd} HP · ${c.priority[0].toUpperCase()}</small><small>${c.desc}</small><small class="muted">Skills: ${c.skills.map(s => SKILLS[s].name).join(', ')}</small><small class="muted">Trees: ${c.tree.map(t => t.name).join(' / ')}</small>`));
     });
     root.appendChild(cg);
 
@@ -747,26 +843,26 @@ const UI = {
       const b = BACKGROUNDS[id];
       const t = taken.includes(id);
       bg.appendChild(el('button', { class: 'pick' + (d.bg === id ? ' sel' : ''), disabled: t ? 'disabled' : undefined, onclick: () => { d.bg = id; UI.renderCreation(); } },
-        `<div class="pick-icon">${b.icon}</div><b>${b.name}</b><small class="bon">${b.perk}</small><small>${b.desc}</small>${t ? '<small class="muted">Taken by the other hero</small>' : ''}`));
+        `<div class="pick-icon">${Icon(id)}</div><b>${b.name}</b><small class="bon">${b.perk}</small><small>${b.desc}</small>${t ? '<small class="muted">Taken by the other hero</small>' : ''}`));
     });
     root.appendChild(bg);
 
     root.appendChild(el('h3', {}, 'Ability Scores'));
     const sr = el('div', { class: 'stat-mode' });
     sr.appendChild(el('button', { class: 'btn small' + (d.mode === 'standard' ? ' primary' : ''), onclick: () => { d.mode = 'standard'; d.array = Character.STANDARD_ARRAY.slice(); UI.renderCreation(); } }, 'Standard array'));
-    sr.appendChild(el('button', { class: 'btn small' + (d.mode === 'rolled' ? ' primary' : ''), onclick: () => { d.mode = 'rolled'; d.array = Character.rollStatArray(); UI.renderCreation(); } }, d.mode === 'rolled' ? '🎲 Reroll 4d6' : '🎲 Roll 4d6 (drop lowest)'));
+    sr.appendChild(el('button', { class: 'btn small' + (d.mode === 'rolled' ? ' primary' : ''), onclick: () => { d.mode = 'rolled'; d.array = Character.rollStatArray(); UI.renderCreation(); } }, `${Icon('dice')} ${d.mode === 'rolled' ? 'Reroll 4d6' : 'Roll 4d6 (drop lowest)'}`));
     sr.appendChild(el('span', { class: 'muted' }, ` Scores: ${d.array.join(', ')} — assigned to suit your class.`));
     root.appendChild(sr);
 
     if (d.race && d.cls) {
       const preview = Character.create(d.name || 'Hero', d.race, d.cls, d.array);
       const pv = el('div', { class: 'preview' });
-      pv.innerHTML = `<div class="stat-row">${STATS.map(s => `<div class="stat"><small>${s.toUpperCase()}</small><b>${preview.stats[s]}</b><span>${signed(mod(preview.stats[s]))}</span></div>`).join('')}</div>
-        <div class="derived"><span>❤️ HP ${Character.maxHp(preview)}</span><span>🛡️ AC ${Character.ac(preview)}</span><span>⚔️ ${Character.weapon(preview).name} ${signed(Character.attackBonus(preview))}</span><span>🔮 Focus ${Character.maxFocus(preview)}</span><span>✨ ${ABILITIES[CLASSES[d.cls].ability].name}</span></div>`;
+      pv.innerHTML = `${UI.medal(Object.assign(preview, { corruption: d.bg && BACKGROUNDS[d.bg].corruption || 0, skillPoints: 0 }), 96)}<div><div class="stat-row">${STATS.map(s => `<div class="stat"><small>${s.toUpperCase()}</small><b>${preview.stats[s]}</b><span>${signed(mod(preview.stats[s]))}</span></div>`).join('')}</div>
+        <div class="derived"><span>${Icon('heart')} HP ${Character.maxHp(preview)}</span><span>${Icon('defend')} AC ${Character.ac(preview)}</span><span>${Icon('attack')} ${Character.weapon(preview).name} ${signed(Character.attackBonus(preview))}</span><span>${Icon('focus')} Focus ${Character.maxFocus(preview)}</span><span>${Icon('ability')} ${ABILITIES[CLASSES[d.cls].ability].name}</span></div></div>`;
       root.appendChild(pv);
     }
     const nav = el('div', { class: 'nav-row' });
-    nav.appendChild(el('button', { class: 'btn ghost', onclick: () => { if (cr.idx > 0) { cr.idx--; cr.draft = cr.drafts[cr.idx]; cr.chars.pop(); } else { cr.count = null; } UI.renderCreation(); } }, '← Back'));
+    nav.appendChild(el('button', { class: 'btn ghost', onclick: () => { if (cr.idx > 0) { cr.idx--; cr.draft = cr.drafts[cr.idx]; cr.chars.pop(); } else { cr.count = null; } UI.renderCreation(); } }, `${Icon('back')} Back`));
     const ready = d.race && d.cls && d.bg;
     nav.appendChild(el('button', { class: 'btn primary', disabled: ready ? undefined : 'disabled', onclick: () => {
       if (!d.name.trim()) d.name = UI.randomName();
@@ -778,7 +874,7 @@ const UI = {
       if (cr.chars.length < cr.count) { cr.idx++; UI.newDraft(); UI.renderCreation(); }
       else if (cr.count === 2) { cr.bondStep = true; UI.renderCreation(); }
       else { Engine.newGame(cr.chars, { difficulty: cr.difficulty || 'normal', gift: cr.gift }); }
-    } }, cr.chars.length + 1 < cr.count ? 'Next hero →' : cr.count === 2 ? 'Choose your bond →' : 'Begin the tale ⚔️'));
+    } }, cr.chars.length + 1 < cr.count ? 'Next hero' : cr.count === 2 ? 'Choose your bond' : 'Begin the tale'));
     root.appendChild(nav);
   },
 

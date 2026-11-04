@@ -91,7 +91,7 @@ SCENES.court_ball2 = {
       failure: { effects: () => flag('court_alert'), text: P(`The nobles laugh. "Forgeries," Varric says smoothly. "Guards." The grey mask is already reaching for the fragment.`), next: 'court_duel_call' },
     },
     {
-      label: 'Find the grey mask\'s accomplice among the guests', hint: '🧩 Deduction — accuse the right masked guest',
+      label: 'Find the grey mask\'s accomplice among the guests', hint: 'Deduction — accuse the right masked guest',
       puzzle: { type: 'whodunit', key: 'court_who', clueBonus: () => (has('court_proof') ? 1 : 0) + (has('court_imra_trust') ? 1 : 0) },
       solved: {
         effects: () => { flag('court_exposed'); addAlly('imra', 'Lady Imra and the guard of Castle Varric'); chronicle('Unmasked the enemy\'s accomplice at Lord Varric\'s masquerade.'); },

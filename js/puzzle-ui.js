@@ -11,15 +11,15 @@ UI.showPuzzle = function (ch, st) {
   box.appendChild(panel);
   const p = ch.puzzle;
   const done = (result, extra) => { if (typeof Sound !== 'undefined') Sound.play(result === 'solved' ? 'crit' : 'fail'); Puzzles.finish(ch, result, extra); };
-  const head = (title, sub) => `<div class="check-head"><b>🧩 ${title}</b><span>${sub}</span></div>`;
+  const head = (title, sub) => `<div class="check-head"><b>${Icon('puzzle')} ${title}</b><span>${sub}</span></div>`;
   const msg = el('div', { class: 'puzzle-msg' });
   const hintBtn = (label, skill, dc, onOk, onFail) => {
-    const b = el('button', { class: 'btn small ghost' }, `💡 ${label} <small>(${SKILLS[skill] ? SKILLS[skill].name : STAT_NAMES[skill]} DC ${dc})</small>`);
+    const b = el('button', { class: 'btn small ghost' }, `${Icon('star')} ${label} <small>(${SKILLS[skill] ? SKILLS[skill].name : STAT_NAMES[skill]} DC ${dc})</small>`);
     b.addEventListener('click', () => {
       b.disabled = true;
       const r = Puzzles.hintRoll(skill, dc);
       if (typeof Sound !== 'undefined') Sound.play('dice');
-      msg.innerHTML = `${esc(r.c.name)} thinks it over (🎲${r.roll} → ${r.total} vs ${dc}): ${r.ok ? '<b>an idea!</b>' : 'nothing comes.'}`;
+      msg.innerHTML = `${esc(r.c.name)} thinks it over (rolled ${r.roll}, total ${r.total} vs ${dc}): ${r.ok ? '<b>an idea!</b>' : 'nothing comes.'}`;
       if (r.ok) onOk(r); else if (onFail) onFail(r);
       Engine.save();
     });
@@ -76,9 +76,9 @@ UI.showPuzzle = function (ch, st) {
       const text = el('div', { class: 'cipher-text' }, esc(shown));
       panel.appendChild(text);
       const wheel = el('div', { class: 'cipher-wheel' });
-      wheel.appendChild(el('button', { class: 'btn', onclick: () => { shift = (shift + 25) % 26; if (typeof Sound !== 'undefined') Sound.play('click'); render(); } }, '◀'));
+      wheel.appendChild(el('button', { class: 'btn', onclick: () => { shift = (shift + 25) % 26; if (typeof Sound !== 'undefined') Sound.play('click'); render(); } }, Icon('back')));
       wheel.appendChild(el('div', { class: 'wheel-val' }, `${shift}<small>wheel setting</small>`));
-      wheel.appendChild(el('button', { class: 'btn', onclick: () => { shift = (shift + 1) % 26; if (typeof Sound !== 'undefined') Sound.play('click'); render(); } }, '▶'));
+      wheel.appendChild(el('button', { class: 'btn', onclick: () => { shift = (shift + 1) % 26; if (typeof Sound !== 'undefined') Sound.play('click'); render(); } }, Icon('chevron')));
       wheel.appendChild(el('button', { class: 'btn primary', onclick: () => {
         if (((shift - st.shift) % 26 + 26) % 26 === 0) { done('solved'); return; }
         st.tries--; Engine.save();
@@ -146,7 +146,7 @@ UI.showPuzzle = function (ch, st) {
       panel.innerHTML = head('The monks\' chant', `Listen to the pattern, then ring the bells in the same order (${st.seq.length} notes). ${st.tries} ${st.tries === 1 ? 'attempt' : 'attempts'} left.`);
       const row = el('div', { class: 'bells' });
       BELLS.forEach((b, i) => {
-        const btn = el('button', { class: 'bell', 'data-i': i, style: `--bell:${b.c}`, disabled: playing ? 'disabled' : undefined }, `🔔<small>${b.n}</small>`);
+        const btn = el('button', { class: 'bell', 'data-i': i, style: `--bell:${b.c}`, disabled: playing ? 'disabled' : undefined }, `${Icon('bell')}<small>${b.n}</small>`);
         btn.addEventListener('click', () => {
           if (playing) return;
           ring(i);
@@ -166,7 +166,7 @@ UI.showPuzzle = function (ch, st) {
       });
       panel.appendChild(row);
       const tools = el('div', { class: 'puzzle-tools' });
-      tools.appendChild(el('button', { class: 'btn small', disabled: playing || st.listens <= 0 ? 'disabled' : undefined, onclick: () => { st.listens--; input = []; Engine.save(); play(); } }, `👂 Listen to the chant (${st.listens} left)`));
+      tools.appendChild(el('button', { class: 'btn small', disabled: playing || st.listens <= 0 ? 'disabled' : undefined, onclick: () => { st.listens--; input = []; Engine.save(); play(); } }, `${Icon('bell')} Listen to the chant (${st.listens} left)`));
       if (!st.hinted) tools.appendChild(hintBtn('Ask for it once more, slower', 'persuasion', 11, () => { st.hinted = true; st.listens++; render(); }, () => { st.hinted = true; }));
       tools.appendChild(giveUp('Back away'));
       panel.appendChild(tools); panel.appendChild(msg);
@@ -188,7 +188,7 @@ UI.showPuzzle = function (ch, st) {
       const grid = el('div', { class: 'guest-grid' });
       st.guests.forEach((g, i) => {
         const card = el('button', { class: 'guest' + (pick === i ? ' sel' : ''), onclick: () => { pick = i; render(); } },
-          `<b>🎭 ${g.mask}</b>${Object.keys(GUEST_ATTRS).map(k => `<small>${GUEST_ATTRS[k].label}: ${GUEST_ATTRS[k].vals[g[k]]}</small>`).join('')}`);
+          `<b>${Icon('mask')} ${g.mask}</b>${Object.keys(GUEST_ATTRS).map(k => `<small>${GUEST_ATTRS[k].label}: ${GUEST_ATTRS[k].vals[g[k]]}</small>`).join('')}`);
         grid.appendChild(card);
       });
       panel.appendChild(grid);
@@ -206,7 +206,7 @@ UI.showPuzzle = function (ch, st) {
   if (p.type === 'dice') {
     const render = () => {
       panel.innerHTML = head(p.title || 'Pip\'s Bones', `Beat ${p.opponent || 'Pip'}'s score of <b>${st.pip}</b>. Roll as often as you like — but a 1 busts you. Stake: ${st.bet} gold.`);
-      panel.appendChild(el('div', { class: 'dice-tray' }, st.rolls.map(r => `<span class="die ${r === 1 ? 'bust' : ''}">${['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'][r]}</span>`).join('') || '<span class="muted">No rolls yet.</span>'));
+      panel.appendChild(el('div', { class: 'dice-tray' }, st.rolls.map(r => `<span class="die ${r === 1 ? 'bust' : ''}">${r}</span>`).join('') || '<span class="muted">No rolls yet.</span>'));
       panel.appendChild(el('div', { class: 'dice-score' }, `Your total: <b>${st.pot}</b> &nbsp; vs &nbsp; ${p.opponent || 'Pip'}: <b>${st.pip}</b>`));
       const tools = el('div', { class: 'puzzle-tools' });
       const bust = st.rolls.length && st.rolls[st.rolls.length - 1] === 1;
@@ -216,10 +216,10 @@ UI.showPuzzle = function (ch, st) {
           if (typeof Sound !== 'undefined') Sound.play('dice');
           if (r !== 1) st.pot += r;
           Engine.save(); render();
-        } }, '🎲 Roll'));
+        } }, `${Icon('dice')} Roll`));
         tools.appendChild(el('button', { class: 'btn', disabled: st.rolls.length ? undefined : 'disabled', onclick: () => {
           if (st.pot > st.pip) done('solved', { won: true }); else if (st.pot === st.pip) done('failed', { tie: true }); else done('failed', { lost: true });
-        } }, `✋ Stop at ${st.pot}`));
+        } }, `${Icon('interrupt')} Stop at ${st.pot}`));
       } else {
         msg.innerHTML = '<b>A one. Bust!</b>';
         if (!st.loaded) tools.appendChild(hintBtn('Palm the die and reroll', 'sleight', 13, () => { st.loaded = true; st.rolls.pop(); render(); msg.innerHTML = 'Nobody saw a thing.'; }, () => { st.loaded = true; st.caught = true; setTimeout(() => done('failed', { lost: true, caught: true }), 900); }));

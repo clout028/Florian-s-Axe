@@ -38,7 +38,7 @@ Consequences carry forward: fragments you fail to recover make the villain stron
 - **A living villain** who raids, besieges Hearthmoor and takes captives while you travel — and taunts you in the campfire.
 - **Lasting injuries**, and **Story / Adventurer / Hardcore / Mythic** difficulty.
 - **The Keeper's Archive**: run history, achievements, legacy gifts — and heroes of past tales who return.
-- **Presentation**: drawn scene art, a journey map, synthesized sound and ambient drones, paced narration.
+- **Presentation**: full-screen painted landscapes for every place (layered depth, fog, glowing light, animated embers, snow, fireflies and rain) that lose their colour as the Hollow spreads; frosted-glass story pages; a custom icon set; hero crests with ring gauges; enemy portraits with HP rings and damage numbers; a night-sky journey map; synthesized sound and ambient drones; paced narration.
 - **Optional AI game master**: type your own action; Claude picks the skill and difficulty, narrates the result, and maps it onto the story so it stays coherent. Bring your own Anthropic API key (Settings ⚙️); it is stored only in your browser.
 
 ## Code layout
@@ -52,7 +52,8 @@ js/engine.js       game state, scene engine, checks, effects, save/load
 js/combat.js       turn-based combat
 js/ui.js           all rendering
 js/meta.js         Keeper's Archive: run history, achievements, unlocks, legacy encounters
-js/art.js          procedural SVG scene art and the journey map
+js/art.js          procedural full-screen SVG landscapes and the journey map
+js/icons.js        line-icon set, hero crests and enemy portraits
 js/sound.js        synthesized sound effects and ambience, settings
 js/puzzles.js      puzzle generation and logic; js/puzzle-ui.js renders them
 js/ai.js           optional AI game master (Anthropic SDK, loaded from a CDN)
