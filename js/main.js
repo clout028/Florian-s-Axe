@@ -4,6 +4,10 @@ document.addEventListener('DOMContentLoaded', () => {
   $('#continue-btn').addEventListener('click', () => { if (!Engine.load()) UI.startCreation(); });
   $('#help-btn').addEventListener('click', () => UI.openHelp());
   $('#archive-btn').addEventListener('click', () => UI.openArchive());
+  $('#map-btn').addEventListener('click', () => UI.openMap());
+  $('#settings-btn').addEventListener('click', () => UI.openSettings());
+  $('#title-settings-btn').addEventListener('click', () => UI.openSettings());
+  document.addEventListener('click', () => { if (typeof Sound !== 'undefined' && Sound.ctx && Sound.ctx.state === 'suspended') Sound.ctx.resume(); }, { once: true });
   $('#journal-btn').addEventListener('click', () => UI.openJournal());
   $('#game-help-btn').addEventListener('click', () => UI.openHelp());
   $('#menu-btn').addEventListener('click', () => {

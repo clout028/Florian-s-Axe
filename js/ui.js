@@ -95,6 +95,8 @@ const UI = {
     const body = $('#story-text');
     body.innerHTML = text || '';
     body.classList.remove('fade-in'); void body.offsetWidth; body.classList.add('fade-in');
+    if (typeof Art !== 'undefined') $('#story-art').innerHTML = Art.scene(id);
+    if (typeof Sound !== 'undefined') { Sound.ambient(Art.keyFor(id)); if (ending) Sound.play(ending === 'victory' ? 'victory' : 'defeat'); }
     $('#story-notes').innerHTML = UI.notesHtml(notes);
     const box = $('#story-choices');
     box.innerHTML = '';
@@ -125,6 +127,51 @@ const UI = {
       box.appendChild(b);
     });
     UI.scrollStoryTop();
+    UI.pace(body, box);
+  },
+
+  /* Storyteller pacing: paragraphs arrive one by one; click to skip. */
+  pace(body, box) {
+    clearTimeout(UI._paceT);
+    const ps = [...body.querySelectorAll(':scope > p, :scope > div')];
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (UI.fast || reduce || typeof Settings === 'undefined' || !Settings.data.pacing || ps.length < 2) return;
+    ps.forEach(p => p.classList.add('unread'));
+    box.classList.add('waiting');
+    let i = 0;
+    const done = () => { ps.forEach(p => p.classList.remove('unread')); box.classList.remove('waiting'); body.onclick = null; clearTimeout(UI._paceT); };
+    const step = () => {
+      if (i >= ps.length) { done(); return; }
+      ps[i].classList.remove('unread');
+      const len = ps[i].textContent.length;
+      i++;
+      UI._paceT = setTimeout(step, Math.min(1600, 350 + len * 9));
+    };
+    body.onclick = done;
+    step();
+  },
+
+  openMap() {
+    if (!G) return;
+    UI.modal(`<div class="journal"><h2>🗺️ The Valley</h2>${Art.map()}<p class="muted small">The Keeper's Map marks three places. The grey haze spreads from ${V().stronghold} as Doom rises.</p></div>`);
+  },
+
+  openSettings() {
+    const wrap = el('div', { class: 'journal' });
+    const render = () => {
+      wrap.innerHTML = '<h2>⚙️ Settings</h2>';
+      [['sfx', 'Sound effects', 'Dice, blows, chimes — all synthesized in your browser.'], ['music', 'Ambient music', 'A quiet drone that changes with the place you\'re in.'], ['pacing', 'Storyteller pacing', 'Story paragraphs arrive one at a time. Click the text to skip ahead.']].forEach(([k, label, desc]) => {
+        const row = el('label', { class: 'setting' }, `<input type="checkbox" ${Settings.data[k] ? 'checked' : ''}> <span><b>${label}</b><small>${desc}</small></span>`);
+        row.querySelector('input').addEventListener('change', e => {
+          Settings.data[k] = e.target.checked; Settings.save();
+          if (k === 'music') { if (e.target.checked && G) Sound.ambient(Art.keyFor(G.scene)); else Sound.stopAmbient(); }
+          if (k === 'sfx' && e.target.checked) Sound.play('success');
+        });
+        wrap.appendChild(row);
+      });
+    };
+    render();
+    UI.modal(wrap);
   },
 
   scrollStoryTop() {
@@ -133,6 +180,7 @@ const UI = {
   },
 
   onChoice(ch) {
+    if (typeof Sound !== 'undefined') Sound.play(ch.hollow ? 'hollow' : 'click');
     if (ch.ui === 'shop') { if (ch.once) flag('once_' + ch.once); UI.openShop(); return; }
     if (ch.ui === 'newgame') { Engine.clearSave(); UI.startCreation(); return; }
     Engine.choose(ch);
@@ -198,6 +246,7 @@ const UI = {
 
   animateDie(node, value, done) {
     if (UI.fast || !node) { done(); return; }
+    if (typeof Sound !== 'undefined') Sound.play('dice');
     let n = 0;
     node.classList.add('rolling');
     const span = node.querySelector('span');
@@ -218,6 +267,8 @@ const UI = {
     const box = $('#story-choices');
     box.innerHTML = '';
     const panel = el('div', { class: 'outcome' });
+    if (ctx && ctx.roll !== undefined && ctx.dc !== undefined && typeof Sound !== 'undefined') Sound.play(ctx.crit ? 'crit' : ctx.bought === 'Hollow' ? 'hollow' : ctx.success ? 'success' : 'fail');
+    if (notes && notes.some(n => n.kind === 'level') && typeof Sound !== 'undefined') setTimeout(() => Sound.play('level'), 400);
     if (ctx && ctx.roll !== undefined && ctx.dc !== undefined) {
       const res = ctx.crit ? 'Critical success!' : ctx.fumble ? 'Critical failure!' : ctx.bought === 'Hollow' ? 'Success — the Hollow\'s gift' : ctx.bought ? `Success at a cost: ${ctx.bought}` : ctx.success ? 'Success!' : 'Failure';
       panel.appendChild(el('div', { class: 'roll-result ' + (ctx.bought === 'Hollow' ? 'hollow' : ctx.success ? 'good' : 'bad') },
@@ -511,6 +562,7 @@ const UI = {
     const fr = ['head', 'haft', 'rune'].map(k => `<li>${FRAGMENTS[k].name}: <b>${G.fragments[k] === 'party' ? 'in your hands' : G.fragments[k] === 'villain' ? 'held by ' + v.short : 'not yet found'}</b>${G.regions.find(r => G.fragLoc[r] === k) && G.fragments[k] === null ? ` <small>(somewhere in ${REGIONS[G.regions.find(r => G.fragLoc[r] === k)].name})</small>` : ''}</li>`).join('');
     const html = `<div class="journal">
       <h2>📖 Journal</h2>
+      ${Art.map()}
       <h3>The Enemy</h3><p><b>${v.name}</b> — ${v.look}. ${v.motive}</p>
       <p class="muted">${v.short}'s lieutenant: ${v.lieutenant.name} ${v.lieutenant.title}${G.rival.slain ? ' (slain)' : G.rival.spared ? ' (spared)' : ''}.</p>
       <h3>Florian's Axe</h3><ul>${fr}</ul>
@@ -537,6 +589,7 @@ const UI = {
       <h3>Choices & checks</h3><p>Choices marked 🎲 need a <b>skill check</b>: roll a d20 and add the character's stat modifier, proficiency, talents and gear. Meet or beat the DC to succeed. A natural 20 always succeeds; a natural 1 always fails. In a 2-player game, pick who attempts each check. You can spend 1 Focus to add +1d4 (Bards +1d6).</p>
       <h3>Narrow misses</h3><p>Miss a check by 3 or less and you can <b>succeed at a cost</b> — take a wound, lose time (Doom), gold or Focus — or accept the failure. In 2-player games, the other hero can <b>help</b> for +2, but shares the risk.</p>
       <h3>Battles</h3><p>Choices marked ⚔️ start a battle. Every enemy shows its <b>intent</b> for the round — watch for 💥 crushing blows and 🌫️ Hollow bursts. <b>Defend</b> (+3 AC) against them, or <b>Interrupt</b> to break the wind-up. Each battlefield offers 🌟 <b>scene actions</b> — drop the chandelier, ring the bell. Critical hits stun, bleed or expose foes. Beaten enemies may surrender: spare, question or execute them. Losing usually doesn't end the game — it changes the story, and may leave lasting <b>injuries</b> (treat them at the healer). Only the final battle is to the death.</p>
+      <h3>The living world</h3><p>The villain acts while you travel — raiding places you haven't reached, attacking Hearthmoor, taking your friends. Each hero's <b>background</b> brings a personal quest that pays off at the end. In two-player games, some decisions are put to a <b>vote</b>; disagreements are argued out and strain your <b>bond</b>. Open the 🗺️ Map to see the valley and the Hollow's spreading haze. Finished tales are recorded in the <b>Keeper's Archive</b>, and their heroes may return.</p>
       <h3>The Hollow</h3><p>When you fail or fall, the Hollow may offer help. Accepting works — and adds <b>Corruption</b>. At 3 you can call Grey Fire and take dark shortcuts in the story; at 5 your eyes grey; at 7 the Hollow calls you its heir. Corruption changes how people see you, how the axe treats you, and how the tale can end. Pray at the chapel to cleanse it.</p>
       <h3>Growing stronger</h3><p>Earn XP from checks and battles. Each level grants more HP and a skill point to spend in your class's <b>skill tree</b> (open the character Sheet). Buy gear in Hearthmoor and equip it from the Sheet.</p>
       <h3>What matters</h3><p>Recover all three fragments to reforge the axe before the end. Allies you help will come to your aid. Learn the villain's secrets — with enough of them, you may end the war with words instead of steel. Watch the <b>Doom</b> meter: the Hollow spreads with time and failure.</p>

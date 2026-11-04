@@ -71,7 +71,8 @@ SCENES.hub_main = {
       const held = Object.keys(G.fragments).filter(k => G.fragments[k] === 'party').map(k => FRAGMENTS[k].name);
       lines.push(fr ? `You carry ${held.join(' and ')}. ${fr === 3 ? 'All three pieces. The axe can be made whole.' : ''}` : `You carry no pieces of the axe — not yet.`);
     }
-    if (remaining.length) lines.push(`The Keeper's Map still marks ${remaining.map(r => REGIONS[r].name).join(remaining.length === 2 ? ' and ' : ', ')}.`);
+    const nm = remaining.map(r => REGIONS[r].name);
+    if (remaining.length) lines.push(`The Keeper's Map still marks ${nm.length > 1 ? nm.slice(0, -1).join(', ') + ' and ' + nm[nm.length - 1] : nm[0]}.`);
     else lines.push(`Every mark on the Map has been visited. There is only one road left: to ${V().stronghold}.`);
     return P(...lines);
   },

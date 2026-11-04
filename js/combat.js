@@ -51,7 +51,12 @@ const Combat = {
     UI.renderCombat();
   },
 
-  log(text, kind = '') { Combat.st.log.push({ text, kind }); },
+  log(text, kind = '') {
+    Combat.st.log.push({ text, kind });
+    const snd = { hit: 'hit', crit: 'crit', miss: 'miss', emiss: 'miss', ehit: 'hurt', heal: 'heal', hollow: 'hollow', boss: 'boss' }[kind];
+    const now = Date.now();
+    if (snd && typeof Sound !== 'undefined' && now - (Combat._lastSnd || 0) > 90) { Combat._lastSnd = now; Sound.play(snd); }
+  },
   livingEnemies() { return Combat.st.enemies.filter(e => e.hp > 0); },
   livingHeroes() { return G.party.filter(c => c.hp > 0); },
   current() { return G.party[Combat.st.turn]; },

@@ -306,3 +306,21 @@ i { color: #d8cbb0; }
 .ach small { color: var(--muted); }
 .run { border-bottom: 1px dashed var(--line); padding: 6px 0; }
 .run.won b { color: var(--gold2); }
+
+/* ---------- Phase 7: presentation ---------- */
+.art-wrap { margin: -22px -26px 14px; border-radius: 14px 14px 0 0; overflow: hidden; line-height: 0; border-bottom: 1px solid var(--line); }
+.scene-art { width: 100%; height: 150px; display: block; transition: filter 1s; }
+.story-text p.unread, .story-text div.unread { opacity: 0; transform: translateY(6px); }
+.story-text p, .story-text div { transition: opacity .6s ease, transform .6s ease; }
+.story-text { cursor: default; }
+.choices.waiting { opacity: 0; pointer-events: none; }
+.choices { transition: opacity .5s; }
+.journey-map { width: 100%; height: auto; display: block; margin: 8px 0; border-radius: 14px; }
+.you-are-here { animation: herepulse 1.6s infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes herepulse { 50% { opacity: .3; } }
+.setting { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-bottom: 1px dashed var(--line); cursor: pointer; }
+.setting input { margin-top: 5px; width: 18px; height: 18px; }
+.setting span { display: flex; flex-direction: column; }
+.setting small { color: var(--muted); }
+@media (max-width: 900px) { .art-wrap { margin: -16px -16px 12px; } .scene-art { height: 110px; } }
+@media (prefers-reduced-motion: reduce) { .story-text p, .choices { transition: none; } .you-are-here, .badge-level, .intent.danger, .ecard.targetable { animation: none; } }

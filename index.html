@@ -22,6 +22,7 @@
         <button id="new-btn" class="btn primary">New tale</button>
         <button id="archive-btn" class="btn ghost">📜 The Keeper's Archive</button>
         <button id="help-btn" class="btn ghost">How to play</button>
+        <button id="title-settings-btn" class="btn ghost">⚙️ Settings</button>
       </div>
       <p class="muted small">1–2 players · Every tale is different</p>
     </div>
@@ -44,7 +45,9 @@
         <div class="gold" title="Party gold">🪙 <b id="gold">0</b></div>
       </div>
       <div class="top-buttons">
+        <button id="map-btn" class="btn small">🗺️ Map</button>
         <button id="journal-btn" class="btn small">📖 Journal</button>
+        <button id="settings-btn" class="btn small ghost" aria-label="Settings">⚙️</button>
         <button id="game-help-btn" class="btn small ghost">?</button>
         <button id="menu-btn" class="btn small ghost">☰</button>
       </div>
@@ -53,6 +56,7 @@
       <aside id="party" class="party"></aside>
       <div class="main-col">
         <article id="story" class="story">
+          <div id="story-art" class="art-wrap"></div>
           <h2 id="story-title"></h2>
           <div id="story-text" class="story-text"></div>
           <div id="story-notes"></div>
@@ -81,6 +85,8 @@
   <script src="js/engine.js"></script>
   <script src="js/combat.js"></script>
   <script src="js/meta.js"></script>
+  <script src="js/art.js"></script>
+  <script src="js/sound.js"></script>
   <script src="js/story/hub.js"></script>
   <script src="js/story/prologue.js"></script>
   <script src="js/story/mire.js"></script>
