@@ -6,6 +6,7 @@
 SCENES.barrow_start = {
   title: 'The Whispering Barrow',
   text: s => P(
+    raidLine('barrow'),
     `The Barrow Downs are a sea of grass and standing stones, and in their centre rises the greatest cairn of all: the tomb of Florian Thane. They say that on still nights the stones whisper his name.`,
     `They are not whispering tonight. The great bronze door at the cairn's mouth has been smashed in with a ram, and the grass around it is trampled flat. ${V().minionPlural} are inside — robbing Florian's grave of <b>${regionFrag('barrow').name}</b>, which the Keepers laid in his arms when they buried him.`,
     `Faint lights move among the stones. The dead of the barrow are restless.`

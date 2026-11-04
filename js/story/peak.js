@@ -6,6 +6,7 @@
 SCENES.peak_start = {
   title: 'Frosthollow Peak',
   text: s => P(
+    raidLine('peak'),
     `The Monastery of the Silent Order sits on the very summit of Frosthollow Peak. For a hundred years, its great bell has rung once every dawn — the monks say it rings to remind the Hollow that someone is still awake.`,
     `Three days ago, it stopped. The villagers in the valley below haven't dared climb up to find out why.`,
     `The Keepers' records are clear on one thing: <b>${regionFrag('peak').name}</b> was set into the bell itself. A blizzard is closing on the peak. There are two ways up.`

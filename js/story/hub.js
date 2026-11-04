@@ -29,6 +29,10 @@ function hubRumors() {
   if (hasAlly('monks')) r.push('Grey-robed monks of the Silent Order have come down from the mountain. They bow to you without a word.');
   if (has('greywater_saved')) r.push('Traders from Greywater say their village is healing. They tell everyone who will listen who saved it.');
   if (has('greywater_lost')) r.push('Greywater has gone silent, they say. No one goes that way any more.');
+  if (has('hearth_defended')) r.push('Since the night of the assault, nobody in Hearthmoor will let you pay for a drink. The market gives you a fifth off everything.');
+  if (has('market_burned')) r.push('The market is a ruin of charred stalls. What traders remain charge half again for everything.');
+  if (G.flags.raid_state === 'succeeded') r.push(`Refugees from ${REGIONS[G.flags.raid_target].name} sleep in the square, telling of the raid.`);
+  if (G.flags.raid_state === 'repelled') r.push(`Folk from ${REGIONS[G.flags.raid_target].name} have come to market. They know your faces.`);
   if (hasAlly('knights')) r.push('The Knights of the Hearth drill in the square. Ser Aldane salutes you as you pass.');
   if (pq('smuggler', 'enemy')) r.push('A street urchin presses a black feather into your hand and runs: the Gutter King\'s mark.');
   if (pq('healer', 'cure')) r.push('Tobin, awake and thin as a rake, follows you around the market asking a hundred questions.');
@@ -72,7 +76,7 @@ SCENES.hub_main = {
       hint: REGIONS[r].blurb,
       effects: () => { doom(1); G.flags.currentRegion = r; },
       text: s => P(`You set out for ${REGIONS[r].name}. The road takes days, and every day, the grey creeps a little further.`),
-      next: REGIONS[r].start,
+      next: () => travelTo(r),
     }));
     list.push({ label: '🛒 Visit the market', hint: 'Buy weapons, armor and supplies', ui: 'shop' });
     if (injuryCount()) list.push({
@@ -112,6 +116,7 @@ SCENES.hub_main = {
 SCENES.road = {
   route: s => {
     const n = G.regionsDone.length;
+    if (n <= 2 && !has('vision_' + n)) return 'vision';
     if (n === 1) return G.interludes[0];
     if (n === 2) return 'int_rival';
     if (n === 3) return G.interludes[1];

@@ -9,6 +9,7 @@ const minesForgeCount = () => (solo() ? 1 : 2) + (G.doom >= 5 ? 1 : 0) - (hasAll
 SCENES.mines_start = {
   title: 'Emberdeep',
   text: s => P(
+    raidLine('mines'),
     `Emberdeep clings to the side of the mountain, a town of stone halls and soot-black chimneys. Every chimney is cold. The great gates to the mine are barred from the inside, and a dwarf with a singed beard and a bandaged arm stands guard on the wrong side of them.`,
     `"Brannoc Ashbeard, foreman," he grunts. "If you've come for work, there's none." When you show him the Keeper's Map, his face changes. "So it's true. You're after what we keep in the Deep Forge."`,
     `The story comes out in a rush. Three days ago ${V().minionPlural} seized the lower mine and forced the night shift to dig toward the old vault where Emberdeep's clans have guarded <b>${regionFrag('mines').name}</b> for a century. Yesterday the tunnel collapsed. "Twenty of my miners are trapped down there," Brannoc says. "Alive, last we heard them tapping. The cultists didn't even slow down."`

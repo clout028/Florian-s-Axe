@@ -3,7 +3,7 @@
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const root = path.join(__dirname, '..');
 const files = ['data.js', 'character.js', 'engine.js', 'combat.js', 'story/hub.js', 'story/prologue.js', 'story/mire.js', 'story/mines.js',
-  'story/harbor.js', 'story/barrow.js', 'story/peak.js', 'story/interludes.js', 'story/personal.js', 'story/finale.js'];
+  'story/harbor.js', 'story/barrow.js', 'story/peak.js', 'story/interludes.js', 'story/villain.js', 'story/personal.js', 'story/finale.js'];
 
 const N = parseInt(process.argv[2] || '300', 10);
 const PLAYERS = parseInt(process.argv[3] || '0', 10); // 0 = mixed
@@ -84,8 +84,9 @@ function botManage() {
   });
   G.party.forEach(c => { c.hp = Math.min(c.hp, Character.maxHp(c)); });
 }
+function UI_price() { return Math.round(12 * (has('market_burned') ? 1.5 : 1) * (has('hearth_defended') ? 0.8 : 1)); }
 function botShop() {
-  while (G.gold >= 12 && (G.pack.potion || 0) < 4) { G.gold -= 12; G.pack.potion = (G.pack.potion || 0) + 1; }
+  while (G.gold >= UI_price() && (G.pack.potion || 0) < 4) { G.gold -= UI_price(); G.pack.potion = (G.pack.potion || 0) + 1; }
 }
 function botCombat() {
   const st = Combat.st; if (!st || st.over || st.busy) return;

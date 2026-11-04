@@ -409,6 +409,8 @@ const Engine = {
 
   startCombat(def) {
     const enemies = def.enemies(G);
+    const cur = G.flags.currentRegion;
+    if (cur && !G.regionsDone.includes(cur) && raidedHere(cur) && !def.deadly && enemies.length && !enemies.some(e => e.lieutenant)) enemies.push(minion(V().minion + ' raider'));
     const intro = typeof def.intro === 'function' ? def.intro(G) : def.intro;
     Combat.start({
       enemies, intro, allyStrikes: def.allyStrikes ? def.allyStrikes(G) : [], actions: Engine.combatActions(def),

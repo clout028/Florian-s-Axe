@@ -10,6 +10,7 @@ const quillFoe = () => foe({ name: 'Master Quill', hp: 26, ac: 13, atk: 4, dmg: 
 SCENES.harbor_start = {
   title: 'Saltcliff Harbor',
   text: s => P(
+    raidLine('harbor'),
     `Saltcliff is a stack of whitewashed houses clinging to chalk cliffs above a harbor full of ships that fly no flags. Everyone here is selling something, and everyone is watching everyone else.`,
     `It doesn't take long to learn what you came to learn. Years ago, fishermen dredged up a strange relic from the wreck of a Keeper ship. It passed from hand to hand until it reached <b>Captain Maree Vosk</b>, queen of the Saltcliff smugglers. Tonight at midnight, aboard her ship the <i>Gilded Gull</i>, she's auctioning it off: <b>${regionFrag('harbor').name}</b>.`,
     `The favourite to win is a soft-spoken buyer called ${QUILL()}, who arrived three days ago with a chest of gold and a ring bearing ${V().sigil}.`

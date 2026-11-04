@@ -82,11 +82,13 @@ SCENES.fin_gate = {
     if (G.rival.spared) lines.push(`But as you watch from cover, the guard changes — and the figure who takes command at the gate is ${l.name}. ${cap(l.he)} looks straight at your hiding place, then turns and, with a few curt orders, sends half the guards away. A postern door beside the gate swings open a crack, and stays open.`);
     else if (G.rival.slain) lines.push(`With ${l.name} dead, the guards are leaderless and nervous, jumping at shadows.`);
     else lines.push(`At their head stands ${l.name} ${l.title}, scanning the road. Waiting for you.`);
+    (G.flags.captives || []).filter(a => !has('freed_' + a)).forEach(a => lines.push(`Somewhere in there, in a cage, is ${a === 'keeper' ? 'Keeper ' + G.flags.keeper : G.allyNames[a]}.`));
     if (hasAlly('miners')) lines.push(`Brannoc's dwarves have already begun to tunnel under the wall.`);
     if (hasAlly('vosk')) lines.push(`Vosk's people have found a culvert by the river that leads straight into the cellars.`);
     return P(...lines);
   },
   choices: s => [
+    ...captiveChoices(),
     {
       label: `Slip through the postern door ${V().lieutenant.name} left open`, req: () => G.rival.spared,
       effects: () => { chronicle(`${V().lieutenant.name}, once spared, opened the gate for you.`); },

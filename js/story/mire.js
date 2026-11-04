@@ -8,6 +8,7 @@ SCENES.mire_start = {
   title: 'The Mirewood Fen',
   first: s => { if (Dice.chance(0.55)) flag('gusk_spy'); },
   text: s => P(
+    raidLine('mire'),
     `The road ends at a rotting jetty where the Mirewood Fen begins. Black water threads between drowned oaks, and in places the moss has gone the colour of old ash — the Hollow's touch, creeping in from the north.`,
     `According to the Keeper's Map, the Keepers hid <b>${regionFrag('mire').name}</b> in the Drowned Shrine at the fen's heart, where Florian once bound "a guardian of peat and oak" to watch over it.`,
     `A ferryman in a patched coat leans on his pole at the jetty. "Gusk's the name. I'll pole you to the heart of the fen for ten gold." Off to the west, a thread of green-tinged smoke rises from a hut on stilts. The ferryman follows your gaze and makes a warding sign. "Old Nan's place. Wouldn't."`

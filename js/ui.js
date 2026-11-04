@@ -468,6 +468,8 @@ const UI = {
     return p.join(' · ');
   },
 
+  price(it) { return Math.round(it.price * (has('market_burned') ? 1.5 : 1) * (has('hearth_defended') ? 0.8 : 1)); },
+
   openShop() {
     const wrap = el('div', { class: 'shop' });
     const render = () => {
@@ -477,12 +479,13 @@ const UI = {
         const it = ITEMS[id];
         const owned = !it.consumable && (hasItem(id));
         const row = el('div', { class: 'shop-row' }, `<div><b>${it.name}</b><small>${it.consumable ? it.desc : UI.itemDesc(it)}${it.slot ? ' · ' + it.slot : ''}</small></div>`);
-        const b = el('button', { class: 'btn small', disabled: (G.gold < it.price || owned) ? 'disabled' : undefined, onclick: () => {
-          if (G.gold < it.price) return;
-          G.gold -= it.price;
+        const price = UI.price(it);
+        const b = el('button', { class: 'btn small', disabled: (G.gold < price || owned) ? 'disabled' : undefined, onclick: () => {
+          if (G.gold < price) return;
+          G.gold -= price;
           if (it.consumable) G.pack[id] = (G.pack[id] || 0) + 1; else G.stash.push(id);
           Engine.save(); UI.renderParty(); render();
-        } }, owned ? 'Owned' : `${it.price} g`);
+        } }, owned ? 'Owned' : `${price} g`);
         row.appendChild(b);
         list.appendChild(row);
       });
