@@ -23,6 +23,7 @@ const ACHIEVEMENTS = {
   host: { name: 'Florian Never Swung Alone', desc: 'Reach the final battle with six or more allies.' },
   personal: { name: 'Unfinished Business', desc: 'Complete a hero\'s personal quest with its best outcome.' },
   sacrifice: { name: 'The Price', desc: 'Pay the price at the sealing.' },
+  sharp: { name: 'Sharp Mind', desc: 'Solve five puzzles yourself in one tale.' },
   soulbound: { name: 'Fight as One', desc: 'Finish a two-player tale with a bond of 10.' },
 };
 
@@ -96,6 +97,7 @@ const Meta = {
     if (has('host_of_allies')) Meta.award(a, 'host', fresh);
     if (pq('knight', 'redeemed') || pq('healer', 'cure') || pq('smuggler', 'ally') || pq('deserter', 'inside') || pq('descendant', 'blood') || pq('touched', 'closed')) Meta.award(a, 'personal', fresh);
     if (!solo() && G.bond >= 10) Meta.award(a, 'soulbound', fresh);
+    if ((G.flags.puzzles_solved || 0) >= 5) Meta.award(a, 'sharp', fresh);
     Meta.save(a);
     return fresh;
   },

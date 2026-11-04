@@ -300,6 +300,7 @@ const Engine = {
     if (ch.once) flag('once_' + ch.once);
     G._notes = [];
     if (ch.cost && ch.cost.gold) addGold(-ch.cost.gold);
+    if (ch.puzzle) { Puzzles.start(ch); return; }
     if (ch.check) { UI.showCheck(ch, Engine.checkOptions(ch)); return; }
     if (ch.combat) { Engine.startCombat(ch.combat); return; }
     Engine.resolve(ch, {});

@@ -218,17 +218,32 @@ SCENES.mines_forge_fight = {
 };
 
 SCENES.mines_vault = {
+  route: s => (hasItem('rune_key') || has('vault_open')) ? 'mines_vault_open' : 'mines_lock',
+};
+
+SCENES.mines_lock = {
+  title: 'The Rune Seal',
+  text: s => P(`The vault door is sealed with a dwarven rune-lock: four stone dials, each carved with the same six runes. The cultists hammered at it for days without opening it. Brannoc said only the clan elders knew the combination.`,
+    `Turn the wrong combination too many times, and the old dwarves built the lock to jam for a day and a night.`),
+  choices: s => [
+    {
+      label: 'Work out the combination', hint: '🧩 Code lock — ● right rune, right place · ○ right rune, wrong place',
+      puzzle: { type: 'code', key: 'mines_lock', title: 'The rune seal', flavor: 'The dials grind under your fingers. Something deep inside the door clicks with every right rune.', hintLabel: 'Read the foreman\'s ledger for hints', hintSkill: 'lore' },
+      solved: { effects: () => flag('vault_open'), text: (s, ctx) => P(`The last dial clicks home. Deep in the door, a hundred-year-old bolt slides back${ctx.guesses <= 3 ? ', and you hear a sound like a dwarf\'s approving grunt from somewhere in the stone' : ''}.`), next: 'mines_vault_open' },
+      failed: { effects: () => { flag('vault_open'); doom(1); }, text: P(`The lock seizes with a sound like a slammed coffin lid. It takes a day and a night of hammering to break the hinges instead — a day the Hollow uses well.`), next: 'mines_vault_open' },
+    },
+    { label: 'Smash the hinges instead', check: { skill: 'athletics', dc: 15 }, success: { effects: () => flag('vault_open'), text: P(`You find the weak point in the hinges and break them in an hour of sweating, ringing work.`), next: 'mines_vault_open' }, failure: { effects: () => { flag('vault_open'); doom(1); hurtAll('1d4'); }, text: P(`It takes all night, and all your strength, but the hinges break at last.`), next: 'mines_vault_open' } },
+  ],
+};
+
+SCENES.mines_vault_open = {
   title: 'The Vault',
-  first: s => { gainFragment('mines'); if (has('mines_fought')) G._clue = addClue(); },
-  text: s => {
-    const c = G._clue; G._clue = null;
-    return P(
-      `${hasItem('rune_key') ? 'The Rune-Key turns in the cracked seal, and' : 'You lever the battered seal aside, and'} the vault door swings open. Inside, on a plinth of black basalt, rests <b>${regionFrag('mines').name}</b> — ${regionFrag('mines').desc}.`,
-      c && `Among the dead cultists' gear you find a satchel of orders. One page is different, a report written in a careful hand:`,
-      c && `<b>${c}</b>`
-    );
-  },
-  choices: [{ label: 'Return to the surface', next: 'mines_end' }],
+  first: s => { gainFragment('mines'); },
+  text: s => P(
+    `${hasItem('rune_key') ? 'The Rune-Key turns in the cracked seal, and' : 'With a groan of old iron,'} the vault door swings open. Inside, on a plinth of black basalt, rests <b>${regionFrag('mines').name}</b> — ${regionFrag('mines').desc}.`,
+    has('mines_fought') && G.clues.length < V().clues.length && `Among the dead cultists' gear you find a satchel of orders. One page is written in cipher.`
+  ),
+  choices: s => [has('mines_fought') && cipherChoice('mines_letter', 'mines_end', 'Decipher the coded page'), { label: 'Return to the surface', next: 'mines_end' }],
 };
 
 SCENES.mines_lost = {

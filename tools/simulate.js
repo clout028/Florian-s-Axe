@@ -2,7 +2,7 @@
    dead ends and balance problems.  Usage: node tools/simulate.js [games] [players 0|1|2] [story|normal|hardcore] */
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const root = path.join(__dirname, '..');
-const files = ['data.js', 'character.js', 'engine.js', 'combat.js', 'meta.js', 'story/hub.js', 'story/prologue.js', 'story/mire.js', 'story/mines.js',
+const files = ['data.js', 'character.js', 'engine.js', 'combat.js', 'meta.js', 'puzzles.js', 'story/hub.js', 'story/prologue.js', 'story/mire.js', 'story/mines.js',
   'story/harbor.js', 'story/barrow.js', 'story/peak.js', 'story/orchard.js', 'story/court.js', 'story/wych.js', 'story/interludes.js', 'story/villain.js', 'story/personal.js', 'story/finale.js'];
 
 const N = parseInt(process.argv[2] || '300', 10);
@@ -52,6 +52,11 @@ const UI = {
     const hollow = opts.filter(o => o.hollow), clean = opts.filter(o => !o.hollow);
     pick = (hollow.length && Math.random() < BOT_HOLLOW) ? hollow[0] : clean[Math.floor(Math.random() * clean.length)];
     Q.push(() => pick.run());
+  },
+  showPuzzle(ch, st) {
+    STATS_F.puzzles = (STATS_F.puzzles || 0) + 1;
+    const extra = ch.puzzle.type === 'whodunit' ? { accused: 'Owl', agentMask: 'Fox' } : ch.puzzle.type === 'dice' ? { tie: Math.random() < 0.1 } : { guesses: 4 };
+    Q.push(() => Puzzles.finish(ch, Math.random() < 0.6 ? 'solved' : 'failed', extra));
   },
   showOutcome(o) {
     if (o.text && /undefined|NaN|\\[object/.test(o.text)) SIM.errors.push('bad outcome text at ' + G.scene + ': ' + o.text.match(/.{0,40}(undefined|NaN|\\[object).{0,20}/)[0]);

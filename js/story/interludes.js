@@ -87,12 +87,7 @@ SCENES.int_merchant = {
       text: s => { const c = G._clue; G._clue = null; return P(`Pip leans in close. "A cousin of a cousin of mine cooks for the other lot," he whispers.`, c ? `<b>${c}</b>` : `"…but it seems you know more than my cousin does!"`); },
       next: 'int_merchant',
     },
-    {
-      label: 'Play a round of Pip\'s Knucklebones (bet 10 gold)', req: () => G.gold >= 10, once: 'pip_dice',
-      check: { skill: 'sleight', dc: 13 },
-      success: { effects: () => addGold(15), text: (s, c) => P(`${c.char.name} rolls a perfect hand. Pip groans and counts out your winnings. "Again sometime. Never, actually."`), next: 'int_merchant' },
-      failure: { effects: () => addGold(-10), text: P(`Pip rolls a perfect hand. "The house thanks you," he beams.`), next: 'int_merchant' },
-    },
+    diceGame('Play a round of Pip\'s Bones (stake 10 gold)', 'pip', 'int_merchant', { opponent: 'Pip', once: 'pip_dice' }),
     { label: 'Wish Pip luck and move on', next: 'hub' },
   ],
 };
@@ -251,12 +246,9 @@ SCENES.int_bridge = {
     G.doom >= 5 && `It glances nervously at the grey haze on the horizon. "Troll is thinking of retiring. Somewhere south."`),
   choices: s => [
     { label: 'Pay the toll (20 gold)', cost: { gold: 20 }, text: P(`The troll writes your names in its ledger with enormous care, misspelling all of them, and waves you across.`), next: 'hub' },
-    {
-      label: 'Ask for the riddle',
-      check: { skill: 'int', dc: 13 },
-      success: { effects: () => { giveXp(50); addGold(10); }, text: (s, c) => P(`"What gets bigger the more you take away?" ${c.char.name} thinks for a moment. "A hole." The troll is so delighted that it pays <i>you</i> ten gold, "for the entertainment".`), next: 'hub' },
-      failure: { effects: () => addGold(-Math.min(G.gold, 20)), text: P(`Wrong. The troll sighs, deeply disappointed in you, and takes the toll anyway.`), next: 'hub' },
-    },
+    riddleChoice('Ask for the riddle', 'troll',
+      { effects: () => addGold(10), text: P(`The troll claps its enormous hands. "Correct! Troll has not been beaten in forty years!" It is so delighted that it pays <i>you</i> ten gold, "for the entertainment", and waves you across.`), next: 'hub' },
+      { effects: () => addGold(-Math.min(G.gold, 20)), text: P(`Wrong. The troll sighs, deeply disappointed in you, and takes the toll anyway.`), next: 'hub' }),
     {
       label: 'Fight your way across',
       combat: {

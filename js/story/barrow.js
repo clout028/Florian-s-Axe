@@ -52,11 +52,10 @@ SCENES.barrow_hall = {
 SCENES.barrow_riddle = {
   title: 'The Riddle',
   text: s => P(`<i>"What did the woodcutter carry that was heavier than his axe, and yet he never once set it down?"</i>`, has('barrow_hint') && `You know the answer.`),
-  choices: s => {
-    const right = { label: '"His promise."', effects: () => { flag('barrow_riddle'); giveXp(50); }, text: P(`The mist-figures bow their heads. <i>"His promise. Pass, oath-keeper."</i> They fade back into their alcoves, and the way to the tomb lies open.`), next: 'barrow_tomb' };
-    const wrong = t => ({ label: t, text: P(`A long, cold silence. <i>"No."</i> The mist-figures draw blades of shadow and drift toward you.`), next: 'barrow_shades' });
-    return Dice.shuffle([right, wrong('"His grief."'), wrong('"His people."'), wrong('"The Hollow\'s curse."')]);
-  },
+  choices: s => [riddleChoice('Answer the spirits', 'barrow',
+    { effects: () => flag('barrow_riddle'), text: P(`The mist-figures bow their heads. <i>"His promise. Pass, oath-keeper."</i> They fade back into their alcoves, and the way to the tomb lies open.`), next: 'barrow_tomb' },
+    { text: P(`A long, cold silence. <i>"No."</i> The mist-figures draw blades of shadow and drift toward you.`), next: 'barrow_shades' },
+    { fixed: { q: 'What did the woodcutter carry that was heavier than his axe, and yet he never once set it down?', a: ['promise', 'his promise', 'oath', 'his oath', 'vow', 'his vow', 'word', 'his word'], wrong: ['His grief', 'His people', 'The Hollow\'s curse'] }, xp: 50 })],
 };
 
 SCENES.barrow_shades = {

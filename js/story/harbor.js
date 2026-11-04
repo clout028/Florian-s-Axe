@@ -81,6 +81,12 @@ SCENES.harbor_hold = {
       failure: { text: (s, c) => P(`The lock snaps a pick off in ${c.char.name}'s fingers and a hidden bell jangles. Boots thunder down the ladder: Quill's men, with Quill behind them. "Ah," he says mildly. "Thieves."`), next: 'harbor_fight' },
     },
     {
+      label: 'Crack the strongroom\'s combination lock', hint: '🧩 Code lock — sea-sigils instead of runes',
+      puzzle: { type: 'code', key: 'harbor_lock', title: 'Vosk\'s strongroom', flavor: 'A brass lock with four dials. Smugglers\' locks are simple, but they are never kind.', harder: true, hintLabel: 'Look for scratches round the dials', giveUpLabel: 'Leave it' },
+      solved: { effects: () => flag('harbor_stole'), text: s => P(`The lock opens with a soft click. Inside, on velvet, lies ${regionFrag('harbor').name}. You tuck it away and slip back toward the hatch.`), next: 'harbor_escape' },
+      failed: { text: P(`One wrong turn too many, and a hidden bell jangles. Boots thunder down the ladder: Quill's men, with Quill behind them. "Ah," he says mildly. "Thieves."`), next: 'harbor_fight' },
+    },
+    {
       label: 'Take a sample of the oil as proof and go up to the auction',
       effects: () => flag('harbor_proof'),
       text: P(`You fill a flask with the stinking grey oil and climb the ladder up onto the lantern-lit deck, where the bidding has already begun.`),
@@ -214,21 +220,18 @@ SCENES.harbor_win = {
   title: 'Recovered',
   first: s => {
     gainFragment('harbor');
-    if (has('harbor_quill_dead')) G._clue = addClue();
     if (has('harbor_exposed') || has('harbor_bought')) { addAlly('vosk', 'Captain Vosk and her smugglers'); chronicle('Earned the friendship of Captain Maree Vosk of Saltcliff.'); }
   },
   text: s => {
-    const c = G._clue; G._clue = null;
     return P(
       `<b>${regionFrag('harbor').name}</b> — ${regionFrag('harbor').desc} — is yours.`,
-      c && `In ${QUILL()}'s coat you find a waxed packet of letters from his master. One of them changes how you see this whole war:`,
-      c && `<b>${c}</b>`,
+      has('harbor_quill_dead') && G.clues.length < V().clues.length && `In ${QUILL()}'s coat you find a waxed packet of letters from his master, written in cipher.`,
       hasAlly('vosk') && `At dawn, Captain Vosk finds you on the quay. "You saved my ship and my neck," she says. "I don't like owing people. When you go after the one who sent Quill, send word. My crew knows every back door in the kingdom."`,
       has('quill_broken') && `Captain Vosk watches you leave Saltcliff with narrowed eyes. Whatever you did to Quill, she wants no part of it.`,
       has('harbor_stole') && !hasAlly('vosk') && `You leave Saltcliff before Vosk can find out who robbed her. You doubt she'll be sending you any presents.`
     );
   },
-  choices: [{ label: 'Leave Saltcliff', next: 'harbor_end' }],
+  choices: s => [has('harbor_quill_dead') && cipherChoice('harbor_letter', 'harbor_end', 'Decipher Quill\'s letters'), { label: 'Leave Saltcliff', next: 'harbor_end' }],
 };
 
 SCENES.harbor_lost = {

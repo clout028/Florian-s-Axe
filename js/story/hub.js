@@ -86,6 +86,7 @@ SCENES.hub_main = {
       next: () => travelTo(r),
     }));
     list.push({ label: '🛒 Visit the market', hint: 'Buy weapons, armor and supplies', ui: 'shop' });
+    list.push(diceGame('🎲 Dice night at the Copper Kettle (stake 10 gold)', 'kettle_' + G.regionsDone.length, 'hub', { opponent: 'Old Hob the innkeeper', once: 'kettle_dice_' + G.regionsDone.length }));
     if (injuryCount()) list.push({
       label: `🩹 See Mother Brisk, the healer (${injuryCount() * 10} gold)`, hint: 'Treat every lasting injury', cost: { gold: injuryCount() * 10 },
       effects: () => { G.party.forEach(c => { while ((c.injuries || []).length) healInjury(c); }); },

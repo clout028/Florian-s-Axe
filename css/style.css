@@ -330,3 +330,37 @@ i { color: #d8cbb0; }
 .ai-thinking { animation: pulse 1.4s infinite; }
 .bad-text { color: #f0a898; }
 .ai-settings { margin-top: 18px; padding-top: 6px; border-top: 1px solid var(--line); }
+
+/* ---------- Puzzles ---------- */
+.puzzle-panel .riddle { font-size: 1.2rem; font-style: italic; color: var(--parch); margin: .3em 0; }
+.riddle-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.riddle-row .ai-input { flex: 1 1 220px; }
+.puzzle-tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.puzzle-msg { min-height: 1.4em; color: var(--gold2); }
+.cipher-text { font-family: 'Courier New', monospace; letter-spacing: .08em; background: #e9dcbc; color: #2a1f18; padding: 12px 14px; border-radius: 8px; line-height: 1.6; word-break: break-word; }
+.cipher-wheel { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.wheel-val { font-family: var(--display); font-size: 1.4rem; color: var(--gold2); display: flex; flex-direction: column; align-items: center; min-width: 70px; }
+.wheel-val small { font-size: .65rem; color: var(--muted); font-family: var(--serif); }
+.code-hist { display: flex; flex-direction: column; gap: 4px; }
+.code-row { display: flex; gap: 6px; align-items: center; }
+.rune { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.5rem; background: #2c241b; border: 1px solid var(--line); border-radius: 8px; color: var(--gold2); }
+.rune.slot { border-style: dashed; }
+.rune.slot.known small { color: var(--muted); font-size: 1rem; }
+.pegs { margin-left: 10px; letter-spacing: .15em; color: var(--gold2); font-size: 1.1rem; min-width: 60px; }
+.rune-pad { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.rune-btn { display: flex; flex-direction: column; align-items: center; font-size: 1.4rem; padding: .3em; }
+.rune-btn small { font-size: .62rem; color: var(--muted); }
+.bells { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.bell { font-size: 2rem; padding: 14px 4px; border-radius: 50% 50% 12px 12px; border: 2px solid var(--bell); background: #241d16; color: var(--ink); cursor: pointer; display: flex; flex-direction: column; align-items: center; transition: transform .1s, background .2s; }
+.bell small { font-size: .8rem; font-family: var(--display); color: var(--bell); }
+.bell.ringing { background: var(--bell); transform: rotate(-8deg) scale(1.06); }
+.bell:disabled { opacity: .6; cursor: default; }
+.clue-list ul { margin: .3em 0 .3em 1.2em; padding: 0; }
+.guest-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.guest { text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; color: var(--ink); font-family: var(--serif); cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
+.guest small { color: var(--muted); font-size: .78rem; }
+.guest.sel { border-color: var(--gold2); background: #3a2f20; }
+.dice-tray { display: flex; flex-wrap: wrap; gap: 4px; font-size: 2.2rem; line-height: 1; min-height: 2.4rem; }
+.die.bust { color: #e0806c; }
+.dice-score { font-size: 1.1rem; }
+@media (max-width: 560px) { .rune-pad { grid-template-columns: repeat(3, minmax(0, 1fr)); } .rune { width: 34px; height: 34px; font-size: 1.2rem; } }

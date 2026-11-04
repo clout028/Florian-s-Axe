@@ -301,19 +301,16 @@ SCENES.mire_win = {
   title: 'Recovered',
   first: s => {
     gainFragment('mire');
-    if (has('mire_minions_dead')) G._clue = addClue();
   },
   text: s => {
-    const c = G._clue; G._clue = null;
     return P(
       `${regionFrag('mire').name} is heavier than it looks, and warm, as though something inside it is still alive. When you hold it, the grey moss on the nearby trees shrinks back a little.`,
-      c && `On the body of the cultist leader you find a sealed letter. Most of it is orders, but one line stops you cold:`,
-      c && `<b>${c}</b>`,
+      has('mire_minions_dead') && G.clues.length < V().clues.length && `On the body of the cultist leader you find a sealed letter. It is written in cipher — but your Keeper's Amulet is engraved with a cipher wheel.`,
       hasAlly('nan') && `As you leave, a green light bobs alongside you to the edge of the fen, then winks out. Old Nan will remember this.`,
       has('nan_threatened') && `As you leave, you feel watched. Old Nan will remember how you treated her.`
     );
   },
-  choices: [{ label: 'Leave the fen', next: 'mire_end' }],
+  choices: s => [has('mire_minions_dead') && cipherChoice('mire_letter', 'mire_end'), { label: 'Leave the fen', next: 'mire_end' }],
 };
 
 SCENES.mire_lost = {

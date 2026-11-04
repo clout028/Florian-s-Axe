@@ -90,7 +90,8 @@ SCENES.peak_tower = {
   title: 'The Bell Tower',
   text: s => P(
     `The bell tower is open to the storm. The great bronze bell hangs in the centre — and coiled around it, blue-white and glittering with frost, is a <b>Frost Wyrm</b>. It is smothering the bell with its body. In the bell's mouth, set into the iron clapper, you see the glint of ${regionFrag('peak').name}.`,
-    `Three bell-ropes hang down beside the stair: one thick as a man's arm, two thinner.`,
+    `Three bell-ropes hang down beside the stair: one thick as a man's arm, two thinner. Below them hangs a frame of four small chanting-bells.`,
+    (has('abbot_cured') || hasAlly('monks')) && `The monks taught you the chant the small bells ring each dawn. Played right, the great bell will answer it.`,
     has('peak_bell_secret') && `<i>The third rope, not the great one</i>, the Abbot said.`,
     hasAlly('monks') && `The monks of the Silent Order have followed you up the stair, silent, holding staves.`,
     `The wyrm opens one pale eye and looks at you.`
@@ -109,6 +110,13 @@ SCENES.peak_tower = {
         flee: { text: P(`You retreat down the stair. Above, the wyrm settles back around the bell, and a few hours later, it takes wing, carrying the clapper in its claws.`), next: 'peak_lost' },
         lose: { text: P(`The wyrm's frozen breath hurls you down the stair. When you wake, it is gone — and so is the clapper, torn out and carried off in its claws toward the north, where ${V().short}'s hunters wait.`), next: 'peak_lost' },
       },
+    },
+    {
+      label: 'Ring the monks\' chant on the small bells', hint: '🧩 Sequence — listen, then repeat the pattern',
+      req: () => has('abbot_cured') || hasAlly('monks'), showLocked: true,
+      puzzle: { type: 'bells', key: 'peak_bells', listens: hasAlly('monks') ? 2 : 1 },
+      solved: { effects: () => giveXp(40), text: P(`The last note rings out — and the great bell, struck in sympathy, answers it with a single pure, enormous tone that rolls out over the mountains. The wyrm screams as though burned and flings itself off the tower into the storm.`), next: 'peak_win' },
+      failed: { effects: () => hurtAll('1d6'), text: P(`A sour note. The bells clash, and the wyrm uncoils with a hiss of frozen fury.`), next: 'peak_wyrm_fight' },
     },
     {
       label: 'Haul on a bell-rope to ring the true note',

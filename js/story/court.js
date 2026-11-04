@@ -74,6 +74,7 @@ SCENES.court_ball2 = {
   title: 'The Midnight Toast',
   text: s => P(
     `At midnight, Lord Varric calls for silence and raises his glass. "To peace," he says, "and to new friends." The grey mask steps up to the pedestal. A servant lifts the glass case.`,
+    `The stable-hand's gossip was right about one more thing: the grey mask has an accomplice among the guests, ready to carry the fragment out while every eye is on the toast.`,
     `It's now or never.`
   ),
   choices: s => [
@@ -88,6 +89,16 @@ SCENES.court_ball2 = {
         next: 'court_fight',
       },
       failure: { effects: () => flag('court_alert'), text: P(`The nobles laugh. "Forgeries," Varric says smoothly. "Guards." The grey mask is already reaching for the fragment.`), next: 'court_duel_call' },
+    },
+    {
+      label: 'Find the grey mask\'s accomplice among the guests', hint: '🧩 Deduction — accuse the right masked guest',
+      puzzle: { type: 'whodunit', key: 'court_who', clueBonus: () => (has('court_proof') ? 1 : 0) + (has('court_imra_trust') ? 1 : 0) },
+      solved: {
+        effects: () => { flag('court_exposed'); addAlly('imra', 'Lady Imra and the guard of Castle Varric'); chronicle('Unmasked the enemy\'s accomplice at Lord Varric\'s masquerade.'); },
+        text: (s, ctx) => P(`"The ${ctx.accused}," you say, loud enough for the hall. The ${ctx.accused} bolts — and the house guard tackles them in a crash of silver plates. Out of their sleeve falls a velvet bag, cut to the exact size of ${regionFrag('court').name}.`, `The grey mask hisses and draws a blade. But now the whole court is watching — and the guard is on your side.`),
+        next: 'court_fight',
+      },
+      failed: { effects: () => flag('court_alert'), text: (s, ctx) => P(`"The ${ctx.accused}!" you cry. The ${ctx.accused} — a very old, very deaf duke — looks around in bewilderment. The court roars with laughter. In the commotion, the ${ctx.agentMask} slips quietly toward the pedestal.`), next: 'court_duel_call' },
     },
     {
       label: 'Challenge the grey mask to a duel of honour',

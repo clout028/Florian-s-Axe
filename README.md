@@ -30,6 +30,7 @@ Consequences carry forward: fragments you fail to recover make the villain stron
 
 ## More depth
 
+- **Puzzles for the player**: riddles (typed answers), coded letters that reveal the villain's secrets, rune-dial code locks, a bell-chant memory test, a masquerade whodunit, and a push-your-luck dice game. Randomized each tale, always with a skill-roll hint and a way out.
 - **Succeed at a cost** on narrow misses; in 2-player games, **help** each other or **vote** on contested decisions (and argue it out).
 - **The Hollow tempts you** when you fail or fall. Corruption unlocks dark shortcuts and Grey Fire, changes how people treat you and how the axe responds, and opens a dark ending.
 - **Tactical battles**: enemies telegraph their moves, you can interrupt, every battlefield has its own scene actions, enemies may surrender, bosses change phase.
@@ -53,6 +54,7 @@ js/ui.js           all rendering
 js/meta.js         Keeper's Archive: run history, achievements, unlocks, legacy encounters
 js/art.js          procedural SVG scene art and the journey map
 js/sound.js        synthesized sound effects and ambience, settings
+js/puzzles.js      puzzle generation and logic; js/puzzle-ui.js renders them
 js/ai.js           optional AI game master (Anthropic SDK, loaded from a CDN)
 js/story/*.js      prologue, hub, eight regions, interludes, villain moves, personal quests, finale
 tools/simulate.js  headless playtest bot: `node tools/simulate.js 500` plays 500 random games,
