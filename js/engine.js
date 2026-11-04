@@ -101,8 +101,8 @@ function loseAlly(id) { G.allies = G.allies.filter(a => a !== id); }
 /* Gain the next clue about the villain; returns its text for narration. */
 function addClue() {
   const v = V();
-  if (G.clues.length >= v.clues.length) return '';
-  const clue = v.clues[G.clues.length];
+  const clue = v.clues.find(c => !G.clues.includes(c));
+  if (!clue) return '';
   G.clues.push(clue);
   note('Secret learned about ' + v.short, 'clue');
   return clue;
@@ -202,14 +202,16 @@ const Engine = {
     const frags = Dice.shuffle(Object.keys(FRAGMENTS));
     const fragLoc = {};
     regions.forEach((r, i) => { fragLoc[r] = frags[i]; });
-    const interludes = Dice.shuffle(['int_traveler', 'int_merchant', 'int_village', 'int_shrine']);
+    const interludes = Dice.shuffle(['int_traveler', 'int_merchant', 'int_village', 'int_shrine', 'int_bridge', 'int_pilgrims']);
+    const twists = {};
+    regions.forEach(r => { twists[r] = Dice.pick(['storm', 'guide', 'hunters', 'fog', 'calm', 'calm']); });
     G = {
       v: 1,
       party: chars,
       gold: 25,
       pack: { potion: 2 },
       stash: [],
-      villain, regions, fragLoc,
+      villain, regions, fragLoc, twists,
       fragments: { head: null, haft: null, rune: null },
       regionsDone: [],
       interludes,       // random order of road encounters
@@ -319,6 +321,8 @@ const Engine = {
     const chk = ch.check;
     const dc = typeof chk.dc === 'function' ? chk.dc(G) : chk.dc;
     const situ = chk.mods ? chk.mods(G).filter(Boolean) : [];
+    const cur = G.flags.currentRegion, tw = cur && !G.regionsDone.includes(cur) && TWISTS[twistOf(cur)];
+    if (tw && tw.checks) situ.push({ label: tw.name, value: tw.checks });
     return {
       dc,
       skill: chk.skill,
@@ -411,6 +415,7 @@ const Engine = {
     const enemies = def.enemies(G);
     const cur = G.flags.currentRegion;
     if (cur && !G.regionsDone.includes(cur) && raidedHere(cur) && !def.deadly && enemies.length && !enemies.some(e => e.lieutenant)) enemies.push(minion(V().minion + ' raider'));
+    if (cur && !G.regionsDone.includes(cur) && twistOf(cur) === 'fog' && !def.deadly && enemies.length) enemies.push(foe('hollowed'));
     const intro = typeof def.intro === 'function' ? def.intro(G) : def.intro;
     Combat.start({
       enemies, intro, allyStrikes: def.allyStrikes ? def.allyStrikes(G) : [], actions: Engine.combatActions(def),
@@ -572,3 +577,31 @@ BATTLE_ACTIONS.cure_husks = {
 function battleActions(...keys) {
   return keys.map(k => BATTLE_ACTIONS[k]).filter(a => a && (!a.req || a.req())).map(a => Object.assign({}, a, { req: undefined }));
 }
+
+/* ---------- Region twists: each run, each region gets a random complication ---------- */
+const TWISTS = {
+  storm: { name: 'Storm', line: 'A howling storm has rolled in. Everything is harder in this weather. (−1 to all checks here)', inner: 'The storm rages on above.', checks: -1 },
+  guide: { name: 'A Local Guide', line: 'A local who hates the enemy offers to help you, for nothing. (+1 to all checks here)', inner: 'Your guide whispers advice at every turn.', checks: 1 },
+  hunters: { name: 'Bounty Hunters', line: 'Wanted posters with your faces on them are nailed to every tree. The enemy has put a price on your heads.', inner: '', checks: 0, ambush: true },
+  fog: { name: 'Grey Fog', line: 'A grey fog has settled over everything here. Husks walk in it. (Every battle here has an extra Hollowed Husk.)', inner: 'The grey fog clings to everything.', checks: 0, husk: true },
+  calm: { name: 'Calm', line: '', inner: '', checks: 0 },
+};
+function twistOf(rid) { return (G.twists || {})[rid]; }
+function twistLine(rid, where) {
+  const t = TWISTS[twistOf(rid)];
+  if (!t) return '';
+  const txt = where === 'inner' ? t.inner : t.line;
+  return txt ? `<i>${txt}</i>` : '';
+}
+Object.assign(BATTLE_ACTIONS, {
+  fire_arrows: { label: 'Light the foresters\' arrows', desc: 'Every foe takes fire and starts burning', skill: 'survival', dc: 12,
+    success: () => { Combat.hitAll('1d8', 'Flaming arrows'); Combat.statusAll('burning', 2); } },
+  heart_root: { label: 'Press your hands to the heart-root', desc: 'Its golden light sears the rot (radiant)', skill: 'wis', dc: 13,
+    success: () => Combat.hitAll('3d6', 'Golden light', true), failure: h => Combat.hurtHero(h, '1d6', 'The rot lashes back and') },
+  wine_toss: { label: 'Throw wine in their eyes', desc: 'Cheap, effective: the foe is exposed', skill: 'sleight', dc: 11, target: 'enemy',
+    success: (h, t) => { t.status.exposed = 2; t.status.rattled = 1; Combat.log(`${t.name} sputters, blinded.`, 'crit'); } },
+  keeper_lantern: { label: 'Raise the Keeper\'s lantern', desc: 'Its blue flame burns the grey', req: () => has('wych_lantern'),
+    success: () => { Combat.hitAll('2d6', 'The blue flame', true); Combat.statusAll('exposed', 2); } },
+  bridge_shove: { label: 'Shove it toward the edge', desc: 'One good push and it goes over the side', skill: 'athletics', dc: 16, target: 'enemy',
+    success: (h, t) => { Combat.hitOne(t, '4d6', 'The fall into the gorge'); if (t.hp > 0) t.status.stunned = 1; }, failure: h => Combat.hurtHero(h, '1d8', 'The troll shoves back and') },
+});

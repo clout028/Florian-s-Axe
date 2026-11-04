@@ -243,3 +243,52 @@ SCENES.int_rival_mercy = {
     },
   ],
 };
+
+/* ---------- The toll bridge ---------- */
+SCENES.int_bridge = {
+  title: 'The Toll Bridge',
+  text: s => P(`The road crosses a gorge on an old stone bridge. Sitting in the middle of it, filling it entirely, is a troll with a tax-collector's ledger balanced on one knee. "Toll," it rumbles. "Twenty gold. Or a riddle. Or a fight. Troll is not fussy."`,
+    G.doom >= 5 && `It glances nervously at the grey haze on the horizon. "Troll is thinking of retiring. Somewhere south."`),
+  choices: s => [
+    { label: 'Pay the toll (20 gold)', cost: { gold: 20 }, text: P(`The troll writes your names in its ledger with enormous care, misspelling all of them, and waves you across.`), next: 'hub' },
+    {
+      label: 'Ask for the riddle',
+      check: { skill: 'int', dc: 13 },
+      success: { effects: () => { giveXp(50); addGold(10); }, text: (s, c) => P(`"What gets bigger the more you take away?" ${c.char.name} thinks for a moment. "A hole." The troll is so delighted that it pays <i>you</i> ten gold, "for the entertainment".`), next: 'hub' },
+      failure: { effects: () => addGold(-Math.min(G.gold, 20)), text: P(`Wrong. The troll sighs, deeply disappointed in you, and takes the toll anyway.`), next: 'hub' },
+    },
+    {
+      label: 'Fight your way across',
+      combat: {
+        enemies: s => [foe('toll_troll')],
+        actions: s => battleActions('bridge_shove'),
+        win: { effects: () => addGold(30), text: P(`The troll yields, sulking, and lets you pass. You help yourself to its strongbox on the way. It's mostly buttons, but not entirely.`), next: 'hub' },
+        flee: { text: P(`You take the long way round. It costs you most of a day.`), effects: () => doom(1), next: 'hub' },
+        lose: { effects: () => addGold(-Math.min(G.gold, 30)), text: P(`The troll sits on you until you pay. Then it charges you extra, for the inconvenience.`), next: 'hub' },
+      },
+    },
+  ],
+};
+
+/* ---------- The pilgrims ---------- */
+SCENES.int_pilgrims = {
+  vote: true,
+  title: 'Pilgrims on the Road',
+  text: s => P(`A straggling line of pilgrims — old people, children, a priest with a bad leg — is trudging south, away from the grey. They are going to the shrine at Hearthmoor to pray for the woodcutter's return. Their leader, a tired young woman, sees your weapons and hurries over.`,
+    `"Please. There are husks in the woods ahead. We'll never make it alone. We can't pay." She looks at the children. "Not in coin."`),
+  choices: s => [
+    {
+      label: 'Escort them to Hearthmoor',
+      effects: () => { doom(1); G.flags.mercy = (G.flags.mercy || 0) + 1; addPack('potion', 2); restoreFocus(); chronicle('Escorted a band of pilgrims safely to Hearthmoor.'); flag('pilgrims_saved'); },
+      text: P(`It takes two slow days. Once, husks come out of the trees and you fight them off at the edge of the camp while the children hide in the carts. But every pilgrim reaches Hearthmoor alive. They have no coin — but the priest blesses you, and the old women press herb-draughts on you until your packs bulge.`),
+      next: 'hub',
+    },
+    {
+      label: 'Point them to a safer road and wish them luck',
+      check: { skill: 'survival', dc: 13 },
+      success: { effects: () => flag('pilgrims_saved'), text: P(`You sketch a route around the woods, along a stream the husks won't cross. The leader studies it, then grips your hand. Later, in Hearthmoor, you hear they made it.`), next: 'hub' },
+      failure: { effects: () => flag('pilgrims_lost'), text: P(`You draw them a route. You never find out whether they followed it. You never hear of them again.`), next: 'hub' },
+    },
+    { label: 'Keep moving', effects: () => flag('pilgrims_lost'), text: P(`The pilgrims watch you go. Nobody says anything. They don't need to.`), next: 'hub' },
+  ],
+};

@@ -10,6 +10,9 @@ const ALLY_HELP = {
   vosk: () => `Captain Vosk's smugglers have come up the river in flat black boats. "Every fortress has a back door," she says. "I've already found this one's."`,
   monks: () => `The monks of the Silent Order walk in silence at the rear, staves in hand. Where they pass, the grey dust settles and stays still.`,
   florian: () => `You carry the Barrow-King's sword, and you feel Florian's promise like a hand on your shoulder.`,
+  elves: () => `The foresters of Silverbough move through the grey like ghosts, silver bows strung.`,
+  imra: () => `Lady Imra Varric rides at the head of her house guard, in her father's armour, refitted.`,
+  knights: () => `The Knights of the Hearth ride in a column of red and gold behind Ser Aldane.`,
   sela: () => `Sela ranges ahead, scouting. She knows every gully and ridge around ${V().stronghold}.`,
 };
 
@@ -27,6 +30,8 @@ function finaleAllyStrikes() {
   if (hasAlly('florian')) a.push({ name: 'The shade of Florian', verb: 'cleaves at', dmg: '2d6+2', radiant: true });
   if (hasAlly('monks')) a.push({ name: 'The Silent Order', verb: 'strikes with blessed staves at', dmg: '1d6+2' });
   if (hasAlly('sela')) a.push({ name: 'Sela', verb: 'puts an arrow into', dmg: '1d8+2' });
+  if (hasAlly('elves')) a.push({ name: 'The archers of Silverbough', verb: 'loose silver arrows into', dmg: '1d8+2', radiant: true });
+  if (hasAlly('imra')) a.push({ name: 'Lady Imra\'s guard', verb: 'charge', dmg: '1d8+1' });
   if (hasAlly('knights')) a.push({ name: 'Ser Aldane\'s knights', verb: 'ride down', dmg: '1d10+2' });
   if (pq('deserter', 'inside')) a.push({ name: 'Marrow and the deserters', verb: 'turn their blades on', dmg: '1d8' });
   return a;
@@ -372,6 +377,10 @@ function epilogue() {
   if (pq('touched', 'closed')) e.push(`The door is closed. For the rest of their life, the Hollow-touched one sleeps without dreams.`);
   if (pq('touched', 'embraced')) e.push(`The one who walked through the door never fully comes back. But the Keepers consult them on everything to do with the Hollow, and they are never wrong.`);
   if (!solo() && G.bond !== undefined) e.push(G.bond >= 8 ? `${G.party[0].name} and ${G.party[1].name} remain inseparable for the rest of their lives.` : G.bond <= 2 ? `${G.party[0].name} and ${G.party[1].name} part ways at Hearthmoor's gate and never quite manage to write.` : `${G.party[0].name} and ${G.party[1].name} meet every year on the anniversary, to drink to the ones who didn't come home.`);
+  if (has('heartwood_saved')) e.push(`The Heartwood of Silverbough grows a new ring that year, wider than any in a thousand years.`);
+  if (has('heartwood_burned')) e.push(`Elven children in Silverbough plant a seedling where the Heartwood stood. It will be ready in eight hundred years.`);
+  if (hasAlly('imra')) e.push(`Lady Imra Varric re-founds her family's Keepership. Her father is quietly retired to a very small house.`);
+  if (has('wych_children')) e.push(`Grass grows again in Wych Hollow. In spring, somebody hears children laughing there, and it isn't frightening at all.`);
   if (has('warden_broken')) e.push(`The Drowned Warden never rises from the fen again. The bog creeps a little further every year.`);
   if (has('florian_destroyed')) e.push(`The stones of the Barrow Downs never whisper again.`);
   if (G.doom >= 7) e.push(`The Hollow had spread far before the end. It will be a generation before the grey fades from the northern hills.`);

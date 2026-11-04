@@ -23,7 +23,7 @@ Each run randomizes:
 
 - **The villain** — Morvane the Ashen, the Pale Abbess Seraphine, or Warlord Kharsk Ironjaw — each with their own motive, minions, lieutenant, stronghold and secrets.
 - **The opening** (a burning village, an ambushed tavern, or a caravan job gone wrong).
-- **Which 3 of 5 regions** hide the axe's fragments, and which fragment is where.
+- **Which 3 of 8 regions** hide the axe's fragments, which fragment is where, and a random twist for each (storm, a local guide, bounty hunters, grey fog).
 - **The road encounters** between journeys.
 
 Consequences carry forward: fragments you fail to recover make the villain stronger in the final battle (and can be won back); allies you help (or abandon) appear at the end; the lieutenant you spare or kill changes how the final gate goes; secrets you uncover let you try to end the war with words instead of steel; and the **Doom** meter — time and failure — darkens the world and the ending. The epilogue and chronicle recap what *your* choices did.

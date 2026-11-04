@@ -8,6 +8,9 @@ const REGIONS = {
   mines: { name: 'the Emberdeep Mines', short: 'Emberdeep', icon: '⛏️', blurb: 'A dwarven mining town whose Deep Forge has fallen silent.', start: 'mines_start' },
   harbor: { name: 'Saltcliff Harbor', short: 'Saltcliff', icon: '⚓', blurb: 'A smugglers\' port where anything can be bought — for a price.', start: 'harbor_start' },
   barrow: { name: 'the Whispering Barrow', short: 'the Barrow', icon: '⚰️', blurb: 'The great cairn where Florian himself was laid to rest.', start: 'barrow_start' },
+  orchard: { name: 'Silverbough', short: 'Silverbough', icon: '🌳', blurb: 'An elven orchard whose great Heartwood is rotting from the roots.', start: 'orchard_start' },
+  court: { name: 'Castle Varric', short: 'Castle Varric', icon: '🎭', blurb: 'A gilded lake-castle hosting a masquerade — and a secret sale.', start: 'court_start' },
+  wych: { name: 'Wych Hollow', short: 'Wych Hollow', icon: '🕯️', blurb: 'The dead village where the Hollow first rose. The grey is still thick there.', start: 'wych_start' },
   peak: { name: 'Frosthollow Peak', short: 'Frosthollow', icon: '🏔️', blurb: 'A mountaintop monastery whose great bell has stopped ringing.', start: 'peak_start' },
 };
 
@@ -33,6 +36,9 @@ function hubRumors() {
   if (has('market_burned')) r.push('The market is a ruin of charred stalls. What traders remain charge half again for everything.');
   if (G.flags.raid_state === 'succeeded') r.push(`Refugees from ${REGIONS[G.flags.raid_target].name} sleep in the square, telling of the raid.`);
   if (G.flags.raid_state === 'repelled') r.push(`Folk from ${REGIONS[G.flags.raid_target].name} have come to market. They know your faces.`);
+  if (hasAlly('elves')) r.push('Elven foresters from Silverbough walk the walls in silver cloaks.');
+  if (hasAlly('imra')) r.push('Banners of House Varric fly over the inn. Lady Imra has sent a company of guards.');
+  if (has('heartwood_burned')) r.push('Elven traders do not come to Hearthmoor any more. Silverbough mourns its tree.');
   if (hasAlly('knights')) r.push('The Knights of the Hearth drill in the square. Ser Aldane salutes you as you pass.');
   if (pq('smuggler', 'enemy')) r.push('A street urchin presses a black feather into your hand and runs: the Gutter King\'s mark.');
   if (pq('healer', 'cure')) r.push('Tobin, awake and thin as a rake, follows you around the market asking a hundred questions.');

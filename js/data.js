@@ -242,6 +242,7 @@ const ITEMS = {
   breastplate: { name: 'Breastplate', slot: 'armor', ac: 14, maxDex: 2, price: 50 },
   splint: { name: 'Splint Mail', slot: 'armor', ac: 17, maxDex: 0, price: 60 },
   warded_robes: { name: 'Archmage\'s Robes', slot: 'armor', ac: 14, maxDex: 9, price: 40 },
+  silver_bow: { name: 'Heartwood Bow', slot: 'weapon', dmg: '1d10', stat: 'dex', attack: 2, damage: 1, radiant: true, unique: true },
   frost_mail: { name: 'Frost-Silver Mail', slot: 'armor', ac: 15, maxDex: 3, unique: true, fireResist: true },
   // trinkets
   rope: { name: 'Rope & Grapple', slot: 'trinket', skills: { athletics: 2 }, price: 8, desc: '+2 Athletics' },
@@ -272,6 +273,10 @@ const ENEMIES = {
   warden: { name: 'The Drowned Warden', hp: 40, ac: 13, atk: 5, dmg: '2d6', xp: 140, big: true, phases: [{ line: 'The Warden bellows, and the pool rises with it — black water roars around your knees.', atk: 1 }] },
   cinder_brute: { name: 'Cinder Brute', hp: 40, ac: 13, atk: 5, dmg: '2d6+1', fire: true, xp: 140, big: true, phases: [{ line: 'Cracks split the Cinder Brute\'s slag-skin, and white-hot fire pours out of them. It moves faster now.', atk: 1 }] },
   frost_wyrm: { name: 'Frost Wyrm', hp: 42, ac: 14, atk: 5, dmg: '2d6', xp: 160, sweep: true, big: true, chills: true, phases: [{ line: 'The wyrm shrieks and coils tighter around the bell. Frost spreads across the tower floor in jagged ferns.', atk: 1 }] },
+  rot_treant: { name: 'Rot-Treant', hp: 44, ac: 13, atk: 5, dmg: '2d6', xp: 150, hollow: true, big: true, phases: [{ line: 'The Rot-Treant tears a root from the earth and swings it like a club. Grey spores fill the air.', atk: 1 }] },
+  court_blade: { name: 'Grey Duelist', hp: 26, ac: 14, atk: 5, dmg: '1d8+2', xp: 120, big: true, bleeds: true, phases: [{ line: '"Not bad," the duelist murmurs, and switches the blade to their other hand. They were holding back.', atk: 1 }] },
+  grey_stalker: { name: 'Grey Stalker', hp: 40, ac: 14, atk: 5, dmg: '2d6', xp: 150, hollow: true, big: true, chills: true, phases: [{ line: 'The Grey Stalker\'s limbs lengthen with a sound like cracking ice. The light in the chapel dims.', atk: 1 }] },
+  toll_troll: { name: 'Bridge Troll', hp: 36, ac: 12, atk: 5, dmg: '2d6', xp: 110, big: true },
   shade_guard: { name: 'Restless Shade', hp: 16, ac: 12, atk: 4, dmg: '1d8+1', xp: 40, hollow: true },
 };
 

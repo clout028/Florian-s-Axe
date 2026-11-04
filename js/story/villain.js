@@ -117,6 +117,7 @@ function travelTo(r) {
     flag('raid_state', 'succeeded');
     chronicle(`${V().short}'s raiders struck ${REGIONS[raidTarget()].name} while you were elsewhere.`);
   }
+  if (twistOf(r) === 'hunters') return 'bounty_ambush';
   return REGIONS[r].start;
 }
 
@@ -133,7 +134,7 @@ SCENES.raid_battle = {
       win: {
         effects: () => { flag('raid_state', 'repelled'); addGold(20); addPack('potion'); chronicle(`Broke ${V().short}'s raid on ${REGIONS[raidTarget()].name}.`); },
         text: s => P(`The raiders break and flee into the hills. By the time you ride in, the locals already know what you did. They press food and coin on you, and point you toward the thing you came for.`),
-        next: s => REGIONS[raidTarget()].start,
+        next: s => twistOf(raidTarget()) === 'hunters' ? 'bounty_ambush' : REGIONS[raidTarget()].start,
       },
       flee: { effects: () => flag('raid_state', 'succeeded'), text: P(`You fall back. The column marches on. By nightfall, the torches are inside.`), next: s => REGIONS[raidTarget()].start },
       lose: { effects: () => flag('raid_state', 'succeeded'), text: P(`You're scattered. When you regroup, the raiders are already inside.`), next: s => REGIONS[raidTarget()].start },
@@ -223,3 +224,36 @@ function captiveChoices() {
     failure: { effects: () => flag('freed_' + a), text: P(`A guard spots you at the cages and blows a horn. You have to run — and there's no time to go back.`), next: 'fin_gate_fight' },
   }));
 }
+
+SCENES.bounty_ambush = {
+  title: 'Bounty Hunters',
+  text: s => P(`A day out from ${REGIONS[G.flags.currentRegion].name}, a crossbow bolt thunks into the tree beside your head. Three figures step out onto the road: bounty hunters, with your faces on a poster. ${V().short} is paying well.`),
+  choices: s => [
+    {
+      label: 'Fight them',
+      combat: {
+        enemies: s => [foe('thug', { name: 'Bounty Hunter' }), foe('thug', { name: 'Bounty Hunter' })].concat(solo() ? [] : [foe('thug', { name: 'Hunter Captain', hp: 18, atk: 5 })]),
+        actions: s => battleActions('rockslide'),
+        win: { effects: () => addGold(25), text: P(`The hunters are down. Their purses are heavy with ${VILLAINS[G.villain].short}'s advance payment — which is now yours.`), next: s => REGIONS[G.flags.currentRegion].start },
+        flee: { text: P(`You lose them in the hills, but it costs you a day.`), effects: () => doom(1), next: s => REGIONS[G.flags.currentRegion].start },
+        lose: { effects: () => addGold(-Math.min(G.gold, 20)), text: P(`They beat you, rob you — and then, astonishingly, decide you're not worth the trouble of carrying. They leave you in a ditch.`), next: s => REGIONS[G.flags.currentRegion].start },
+      },
+    },
+    {
+      label: 'Offer to double their fee if they walk away',
+      check: { skill: 'deception', dc: 14 },
+      success: { text: (s, c) => P(`${c.char.name} spins a tale of a hidden treasury that the hunters will never find, and the promise of a share. They lower their bows. By the time they realise there's no treasury, you're long gone.`), next: s => REGIONS[G.flags.currentRegion].start },
+      failure: { text: P(`"Nice try." The crossbows come up.`), next: 'bounty_fight' },
+    },
+  ],
+};
+SCENES.bounty_fight = {
+  title: 'Bounty Hunters',
+  text: P(`They close in.`),
+  choices: s => [{ label: 'Fight!', combat: {
+    enemies: s => [foe('thug', { name: 'Bounty Hunter' }), foe('thug', { name: 'Bounty Hunter' })],
+    win: { effects: () => addGold(25), text: P(`The hunters are down, and their advance payment is yours.`), next: s => REGIONS[G.flags.currentRegion].start },
+    flee: { effects: () => doom(1), text: P(`You lose them in the hills.`), next: s => REGIONS[G.flags.currentRegion].start },
+    lose: { effects: () => addGold(-Math.min(G.gold, 20)), text: P(`They rob you and leave you in a ditch.`), next: s => REGIONS[G.flags.currentRegion].start },
+  } }],
+};
