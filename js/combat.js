@@ -43,7 +43,7 @@ const Combat = {
       over: false,
       surrendered: null,
     };
-    G.party.forEach(c => { Combat.st.buffs[c.id] = { attack: 0, status: {} }; });
+    G.party.forEach(c => { Combat.st.buffs[c.id] = { attack: (opts.heroBuffs || {})[c.id] || 0, status: {} }; });
     opts.enemies.forEach(e => { e.status = e.status || {}; e.phase = e.phase || 1; });
     if (opts.intro) Combat.log(opts.intro, 'intro');
     Combat.planIntents();
@@ -249,7 +249,7 @@ const Combat = {
       return roll;
     }
     let dmg = Dice.roll(ab.die).total + Math.max(0, Character.spellMod(hero)) + fx.spellDamage + (RACES[hero.race].abilityDamage || 0);
-    if (ab.corrupting) dmg = Dice.roll(ab.die).total + (hero.corruption || 0);
+    if (ab.corrupting) dmg = Dice.roll(ab.die).total + (hero.corruption || 0) + (hero.background === 'touched' && pq('touched', 'embraced') ? 4 : 0);
     if (fx.spellDie && !ab.corrupting) dmg += Dice.roll(fx.spellDie).total;
     if (crit) dmg += Dice.roll(ab.die).total;
     if (ab.element === 'fire' && target.fire) dmg = Math.floor(dmg / 2);
@@ -316,6 +316,7 @@ const Combat = {
       const n = Character.heal(target, Dice.roll(it.heal).total);
       Combat.st.buffs[target.id].status.bleeding = 0;
       Combat.log(`${hero.name} uses a ${it.name}${target !== hero ? ' on ' + target.name : ''}: ${wasDown ? target.name + ' is revived and ' : ''}+<b>${n}</b> HP.`, 'heal');
+      if (it.cleanse && target.corruption) { G._notes = []; corrupt(target, -it.cleanse); G._notes = []; Combat.log(`The grey drains out of ${target.name}'s veins.`, 'heal'); }
     } else if (it.focus) {
       hero.focus = Math.min(Character.maxFocus(hero), hero.focus + it.focus);
       Combat.log(`${hero.name} drinks a ${it.name} (+${it.focus} Focus).`, 'heal');

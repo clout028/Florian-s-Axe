@@ -101,6 +101,7 @@ SCENES.mines_captive = {
 };
 
 SCENES.mines_junction = {
+  vote: true,
   title: 'The Collapse',
   text: s => P(
     `The tunnel forks. To the left, a wall of fallen rock, and behind it, faint and regular: <i>tap… tap… tap.</i> The trapped miners — still alive. To the right, the passage slopes down toward a red glow and the clang of hammers on stone. The Deep Forge. The cultists are close to breaking the vault.`,

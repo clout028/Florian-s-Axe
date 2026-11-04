@@ -296,3 +296,7 @@ i { color: #d8cbb0; }
 .tempt p { color: #c5ccd3; margin: .4em 0 .8em; }
 .log.hollow { color: #c5ccd3; font-style: italic; }
 .log.boss { color: #f5b8a8; font-weight: 600; font-style: italic; }
+.vote-banner { background: #23201a; border: 1px dashed var(--gold); border-radius: 10px; padding: 8px 12px; font-size: .95rem; }
+.choice.voted { border-color: var(--gold2); background: #3a2f20; }
+.vote-tag { font-size: .75rem; background: var(--gold); color: #1a1208; border-radius: 8px; padding: 0 6px; margin-left: 6px; }
+.pick:disabled { opacity: .4; cursor: not-allowed; }

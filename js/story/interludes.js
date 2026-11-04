@@ -5,6 +5,7 @@
 
 /* ---------- The wounded ranger ---------- */
 SCENES.int_traveler = {
+  vote: true,
   title: 'Wolves on the Road',
   text: s => P(
     `On a lonely stretch of road, you hear howling. In a ditch below, a woman in a ranger's green cloak is pinned under a dead horse, swinging a broken bow at three lean wolves with grey, crumbling fur and eyes like wet ash. Hollow-wolves.`,
@@ -98,6 +99,7 @@ SCENES.int_merchant = {
 
 /* ---------- The grey village ---------- */
 SCENES.int_village = {
+  vote: true,
   title: 'Greywater',
   text: s => P(
     `The village of Greywater straddles a little river. Too many doors are shut. In the square, a woman with a grey-streaked face stands guard over a stone well-house with a plank nailed across its door.`,
@@ -216,6 +218,7 @@ SCENES.int_rival = {
 };
 
 SCENES.int_rival_mercy = {
+  vote: true,
   title: 'Mercy or Justice',
   text: s => P(`${V().lieutenant.name} kneels before you, bleeding, glaring up. ${V().lieutenant.his.charAt(0).toUpperCase() + V().lieutenant.his.slice(1)} followers are gone. It would be very easy to end this — and ${V().lieutenant.he} would certainly not show you the same mercy.`),
   choices: s => [

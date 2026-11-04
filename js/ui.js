@@ -85,7 +85,7 @@ const UI = {
   },
 
   /* ---------------- Story ---------------- */
-  renderScene({ id, title, text, choices, notes, ending }) {
+  renderScene({ id, title, text, choices, notes, ending, vote }) {
     UI.show('#game-screen');
     UI.renderParty();
     $('#combat').classList.add('hidden');
@@ -100,11 +100,28 @@ const UI = {
     box.innerHTML = '';
     $('#story').classList.toggle('ending', !!ending);
     $('#story').dataset.ending = ending || '';
+    UI._vote = vote ? { picks: [] } : null;
+    if (vote) box.appendChild(el('div', { class: 'vote-banner' }, `🗳️ <b>${esc(G.party[0].name)}</b>, choose what you think you should do. Then <b>${esc(G.party[1].name)}</b> chooses. If you disagree, you'll argue it out.`));
     choices.forEach(ch => {
       const b = el('button', { class: 'choice' + (ch.locked ? ' locked' : '') + (ch.check ? ' has-check' : '') + (ch.combat ? ' has-combat' : '') + (ch.hollow ? ' hollow-choice' : ''), disabled: ch.locked ? 'disabled' : undefined });
       const icon = ch.hollow ? '🌫️' : ch.combat ? '⚔️' : ch.check ? '🎲' : ch.ui === 'shop' ? '' : '➤';
       b.innerHTML = `<span class="c-label">${icon ? `<span class="c-icon">${icon}</span>` : ''}${ch.label}</span>${ch.hint || ch.lockReason ? `<span class="c-hint">${ch.locked ? '🔒 ' : ''}${ch.lockReason || ch.hint}</span>` : ''}`;
-      b.addEventListener('click', () => UI.onChoice(ch));
+      b.addEventListener('click', () => {
+        if (UI._vote && !ch.ui) {
+          const v = UI._vote;
+          v.picks.push(ch);
+          if (v.picks.length === 1) {
+            b.classList.add('voted');
+            b.querySelector('.c-label').insertAdjacentHTML('beforeend', ` <span class="vote-tag">${esc(G.party[0].name)}</span>`);
+            box.querySelector('.vote-banner').innerHTML = `🗳️ Now <b>${esc(G.party[1].name)}</b>, what do you think?`;
+            return;
+          }
+          box.querySelectorAll('button').forEach(x => { x.disabled = true; });
+          Engine.vote(v.picks[0], v.picks[1]);
+          return;
+        }
+        UI.onChoice(ch);
+      });
       box.appendChild(b);
     });
     UI.scrollStoryTop();
@@ -149,7 +166,7 @@ const UI = {
       const others = info.options.filter(o => o !== chosen);
       if (helper && helper === chosen.char) helper = null;
       helpWrap.innerHTML = '';
-      if (others.length) {
+      if (others.length && !(G.bond !== undefined && G.bond <= 2)) {
         const h = others[0].char;
         const hb = el('label', {}, `<input type="checkbox" ${helper ? 'checked' : ''}> ${esc(h.name)} helps (+2) <small class="muted">— shares the risk: takes 1d4 damage on a failure</small>`);
         hb.querySelector('input').addEventListener('change', e => { helper = e.target.checked ? h : null; renderWho(); });
@@ -367,6 +384,8 @@ const UI = {
         <h2>${race.icon}${cls.icon} ${esc(c.name)}</h2>
         <div class="muted">Level ${c.level} ${race.name} ${cls.name} · XP ${c.xp}${c.level < MAX_LEVEL ? ' / ' + XP_TABLE[c.level] : ''}</div>
         <p class="trait"><b>${race.name}:</b> ${race.trait}</p>
+        ${c.background ? `<p class="trait"><b>${BACKGROUNDS[c.background].icon} ${BACKGROUNDS[c.background].name}:</b> ${BACKGROUNDS[c.background].desc}</p>` : ''}
+        ${!solo() && G.bond !== undefined ? `<p class="trait"><b>Bond — ${bondName()}:</b> ${G.bond}/10${G.bond >= 8 ? ' · Fight as One unlocked' : G.bond <= 2 ? ' · Fraying: no helping each other' : ''}</p>` : ''}
         ${c.corruption ? `<p class="trait hollow-text"><b>Corruption ${c.corruption}/10.</b> ${c.corruption >= 7 ? 'The Hollow calls them heir. Their reflection is grey.' : c.corruption >= 5 ? 'Their eyes have begun to grey (−1 Wisdom & Charisma checks).' : c.corruption >= 3 ? 'Grey veins under the skin. Grey Fire answers their call.' : 'A chill that never quite leaves.'}</p>` : ''}
         ${(c.injuries || []).length ? `<p class="trait"><b>Injuries:</b> ${c.injuries.map(k => `${INJURIES[k].name} (${INJURIES[k].desc})`).join('; ')}. <span class="muted">Treat them at the Hearthmoor healer.</span></p>` : ''}
         <div class="stat-row">${STATS.map(s => `<div class="stat"><small>${s.toUpperCase()}</small><b>${c.stats[s]}</b><span>${signed(mod(c.stats[s]))}</span></div>`).join('')}</div>
@@ -424,6 +443,7 @@ const UI = {
           pu.appendChild(el('button', { class: 'btn small', onclick: () => {
             G.pack[k]--; if (!G.pack[k]) delete G.pack[k];
             if (ITEMS[k].heal) Character.heal(c, Dice.roll(ITEMS[k].heal).total);
+            if (ITEMS[k].cleanse && c.corruption) c.corruption = Math.max(0, c.corruption - ITEMS[k].cleanse);
             if (ITEMS[k].focus) c.focus = Math.min(Character.maxFocus(c), c.focus + ITEMS[k].focus);
             Engine.save(); render(); UI.renderParty();
           } }, `Use ${ITEMS[k].name} (${G.pack[k]})`));
@@ -536,6 +556,20 @@ const UI = {
       root.appendChild(drow);
       return;
     }
+    if (cr.bondStep) {
+      const [a, b] = cr.chars;
+      root.appendChild(el('h2', {}, `How do ${esc(a.name)} and ${esc(b.name)} know each other?`));
+      root.appendChild(el('p', { class: 'muted' }, 'Your bond grows or frays with what you choose together. A strong bond unlocks "Fight as One"; a broken one means you can no longer help each other.'));
+      const g = el('div', { class: 'grid' });
+      Object.keys(BONDS).forEach(k => g.appendChild(el('button', { class: 'pick' + (cr.bondType === k ? ' sel' : ''), onclick: () => { cr.bondType = k; UI.renderCreation(); } },
+        `<b>${BONDS[k].name}</b><small class="bon">Starting bond ${BONDS[k].start}/10</small><small>${BONDS[k].desc}</small>`)));
+      root.appendChild(g);
+      const nav = el('div', { class: 'nav-row' });
+      nav.appendChild(el('button', { class: 'btn ghost', onclick: () => { cr.bondStep = false; cr.chars.pop(); cr.draft = cr.drafts[cr.idx]; UI.renderCreation(); } }, '← Back'));
+      nav.appendChild(el('button', { class: 'btn primary', disabled: cr.bondType ? undefined : 'disabled', onclick: () => Engine.newGame(cr.chars, { difficulty: cr.difficulty || 'normal', bondType: cr.bondType }) }, 'Begin the tale ⚔️'));
+      root.appendChild(nav);
+      return;
+    }
     const d = cr.draft;
     root.appendChild(el('h2', {}, cr.count === 2 ? `Player ${cr.idx + 1}: create your hero` : 'Create your hero'));
     const nameRow = el('div', { class: 'name-row' });
@@ -565,6 +599,17 @@ const UI = {
     });
     root.appendChild(cg);
 
+    root.appendChild(el('h3', {}, 'Background'));
+    const bg = el('div', { class: 'grid' });
+    const taken = cr.chars.map(c => c.background);
+    Object.keys(BACKGROUNDS).forEach(id => {
+      const b = BACKGROUNDS[id];
+      const t = taken.includes(id);
+      bg.appendChild(el('button', { class: 'pick' + (d.bg === id ? ' sel' : ''), disabled: t ? 'disabled' : undefined, onclick: () => { d.bg = id; UI.renderCreation(); } },
+        `<div class="pick-icon">${b.icon}</div><b>${b.name}</b><small class="bon">${b.perk}</small><small>${b.desc}</small>${t ? '<small class="muted">Taken by the other hero</small>' : ''}`));
+    });
+    root.appendChild(bg);
+
     root.appendChild(el('h3', {}, 'Ability Scores'));
     const sr = el('div', { class: 'stat-mode' });
     sr.appendChild(el('button', { class: 'btn small' + (d.mode === 'standard' ? ' primary' : ''), onclick: () => { d.mode = 'standard'; d.array = Character.STANDARD_ARRAY.slice(); UI.renderCreation(); } }, 'Standard array'));
@@ -581,20 +626,25 @@ const UI = {
     }
     const nav = el('div', { class: 'nav-row' });
     nav.appendChild(el('button', { class: 'btn ghost', onclick: () => { if (cr.idx > 0) { cr.idx--; cr.draft = cr.drafts[cr.idx]; cr.chars.pop(); } else { cr.count = null; } UI.renderCreation(); } }, '← Back'));
-    const ready = d.race && d.cls;
+    const ready = d.race && d.cls && d.bg;
     nav.appendChild(el('button', { class: 'btn primary', disabled: ready ? undefined : 'disabled', onclick: () => {
       if (!d.name.trim()) d.name = UI.randomName();
-      cr.chars.push(Character.create(d.name.trim(), d.race, d.cls, d.array));
+      const ch = Character.create(d.name.trim(), d.race, d.cls, d.array);
+      ch.background = d.bg;
+      ch.corruption = BACKGROUNDS[d.bg].corruption || 0;
+      ch.hp = Character.maxHp(ch);
+      cr.chars.push(ch);
       if (cr.chars.length < cr.count) { cr.idx++; UI.newDraft(); UI.renderCreation(); }
+      else if (cr.count === 2) { cr.bondStep = true; UI.renderCreation(); }
       else { Engine.newGame(cr.chars, { difficulty: cr.difficulty || 'normal' }); }
-    } }, cr.chars.length + 1 < cr.count ? 'Next hero →' : 'Begin the tale ⚔️'));
+    } }, cr.chars.length + 1 < cr.count ? 'Next hero →' : cr.count === 2 ? 'Choose your bond →' : 'Begin the tale ⚔️'));
     root.appendChild(nav);
   },
 
   newDraft() {
     const cr = UI.cr;
     cr.drafts = cr.drafts || [];
-    cr.draft = { name: UI.randomName(), race: null, cls: null, mode: 'standard', array: Character.STANDARD_ARRAY.slice() };
+    cr.draft = { name: UI.randomName(), race: null, cls: null, bg: null, mode: 'standard', array: Character.STANDARD_ARRAY.slice() };
     cr.drafts[cr.idx] = cr.draft;
   },
 

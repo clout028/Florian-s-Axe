@@ -3,7 +3,7 @@
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const root = path.join(__dirname, '..');
 const files = ['data.js', 'character.js', 'engine.js', 'combat.js', 'story/hub.js', 'story/prologue.js', 'story/mire.js', 'story/mines.js',
-  'story/harbor.js', 'story/barrow.js', 'story/peak.js', 'story/interludes.js', 'story/finale.js'];
+  'story/harbor.js', 'story/barrow.js', 'story/peak.js', 'story/interludes.js', 'story/personal.js', 'story/finale.js'];
 
 const N = parseInt(process.argv[2] || '300', 10);
 const PLAYERS = parseInt(process.argv[3] || '0', 10); // 0 = mixed
@@ -35,6 +35,7 @@ const UI = {
       else if (G.gold >= 30 && Math.random() < 0.5) { botShop(); pick = travel[0] || open[0]; }
       else pick = travel.length && Math.random() < 0.85 ? travel[Math.floor(Math.random() * travel.length)] : open[Math.floor(Math.random() * open.length)];
     } else pick = open[Math.floor(Math.random() * open.length)];
+    if (sc.vote && Math.random() < 0.7) { const b2 = open[Math.floor(Math.random() * open.length)]; Q.push(() => Engine.vote(pick, b2)); return; }
     Q.push(() => {
       if (pick.ui === 'shop') { botShop(); Engine.go(G.scene); return; }
       if (pick.ui === 'newgame') { SIM.ending = 'newgame?'; return; }
@@ -106,9 +107,10 @@ function runOne(nPlayers) {
   Q.length = 0;
   const races = Object.keys(RACES), classes = Object.keys(CLASSES);
   const chars = [];
-  for (let i = 0; i < nPlayers; i++) chars.push(Character.create('Bot' + i, Dice.pick(races), Dice.pick(classes)));
+  const bgs = Dice.shuffle(Object.keys(BACKGROUNDS));
+  for (let i = 0; i < nPlayers; i++) { const c = Character.create('Bot' + i, Dice.pick(races), Dice.pick(classes)); c.background = bgs[i]; c.corruption = BACKGROUNDS[bgs[i]].corruption || 0; c.hp = Character.maxHp(c); chars.push(c); }
   try {
-    Engine.newGame(chars, { difficulty: DIFF });
+    Engine.newGame(chars, { difficulty: DIFF, bondType: Dice.pick(Object.keys(BONDS)) });
     let guard = 0;
     while (Q.length && !SIM.ending && guard++ < 200000) Q.shift()();
     if (!SIM.ending) SIM.errors.push('stalled at ' + G.scene + ' combat=' + !!Combat.st);

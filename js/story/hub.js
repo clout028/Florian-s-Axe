@@ -29,6 +29,9 @@ function hubRumors() {
   if (hasAlly('monks')) r.push('Grey-robed monks of the Silent Order have come down from the mountain. They bow to you without a word.');
   if (has('greywater_saved')) r.push('Traders from Greywater say their village is healing. They tell everyone who will listen who saved it.');
   if (has('greywater_lost')) r.push('Greywater has gone silent, they say. No one goes that way any more.');
+  if (hasAlly('knights')) r.push('The Knights of the Hearth drill in the square. Ser Aldane salutes you as you pass.');
+  if (pq('smuggler', 'enemy')) r.push('A street urchin presses a black feather into your hand and runs: the Gutter King\'s mark.');
+  if (pq('healer', 'cure')) r.push('Tobin, awake and thin as a rake, follows you around the market asking a hundred questions.');
   if (hasAlly('vosk')) r.push('A Saltcliff sailor slips you a note: "The Captain remembers her friends."');
   if (hasAlly('sela')) r.push('Sela the ranger is waiting at the inn, sharpening arrows. "Whenever you\'re ready," she says.');
   if (G.rival.slain) r.push(`Word has spread that ${V().lieutenant.name} is dead. ${V().short}'s followers are said to be shaken.`);
@@ -36,12 +39,17 @@ function hubRumors() {
   return r;
 }
 
+/* Returning to Hearthmoor: personal stories, camp and the villain's moves play first. */
 SCENES.hub = {
+  route: s => (typeof villainMovePending === 'function' && villainMovePending()) || pendingPersonal() || 'hub_main',
+};
+
+SCENES.hub_main = {
   title: 'Hearthmoor',
   first: s => { if (!has('keeper_alive')) flag('smith_only'); },
   text: s => {
     const remaining = G.regions.filter(r => !G.regionsDone.includes(r));
-    const firstVisit = G.visited.hub === 1;
+    const firstVisit = G.visited.hub_main === 1;
     const fr = fragCount('party');
     const lines = [];
     if (firstVisit) lines.push(`Hearthmoor is a walled market town at the meeting of three roads — the last place in the valley where all the roads still feel safe. The old smithy by the square still has the great anvil where, legend says, Florian's Axe was first assembled.`);

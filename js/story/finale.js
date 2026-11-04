@@ -27,6 +27,8 @@ function finaleAllyStrikes() {
   if (hasAlly('florian')) a.push({ name: 'The shade of Florian', verb: 'cleaves at', dmg: '2d6+2', radiant: true });
   if (hasAlly('monks')) a.push({ name: 'The Silent Order', verb: 'strikes with blessed staves at', dmg: '1d6+2' });
   if (hasAlly('sela')) a.push({ name: 'Sela', verb: 'puts an arrow into', dmg: '1d8+2' });
+  if (hasAlly('knights')) a.push({ name: 'Ser Aldane\'s knights', verb: 'ride down', dmg: '1d10+2' });
+  if (pq('deserter', 'inside')) a.push({ name: 'Marrow and the deserters', verb: 'turn their blades on', dmg: '1d8' });
   return a;
 }
 
@@ -48,6 +50,7 @@ SCENES.fin_forge = {
 };
 
 SCENES.fin_march = {
+  enter: s => { if (pq('smuggler', 'enemy') && bgHero('smuggler') && !has('assassins_struck')) { flag('assassins_struck'); hurt(bgHero('smuggler'), '2d6'); injure(bgHero('smuggler')); } },
   title: s => `The Road to ${V().stronghold.replace(/^the /, '').replace(/^./, c => c.toUpperCase())}`,
   first: s => { healAll('full'); },
   text: s => {
@@ -62,6 +65,9 @@ SCENES.fin_march = {
       lines.push(`<b>You do not come alone.</b>`);
       G.allies.forEach(a => { if (ALLY_HELP[a]) lines.push(ALLY_HELP[a](s)); });
     } else lines.push(`You come alone. Whatever help you might have found on the road, none of it followed you here.`);
+    if (pq('smuggler', 'enemy') && bgHero('smuggler')) lines.push(`On the second night, a knife comes out of the dark. The Gutter King's assassins — ${bgHero('smuggler').name} wakes just in time, but not unhurt. Crane collects his debts.`);
+    if (pq('healer', 'cure')) lines.push(`${bgHero('healer') ? bgHero('healer').name : 'You'} carries the Grey-Cure close. The husks on those walls were people once. Some of them might be again.`);
+    if (has('villain_misled')) lines.push(`The fortress garrison is thin: half of it marched east days ago, chasing the false route Silas Crane sold them.`);
     if (has('sela_abandoned') || has('sela_lost')) lines.push(`Among the grey husks shambling around the walls, you think you see a ranger's green cloak.`);
     return P(...lines);
   },
@@ -86,6 +92,28 @@ SCENES.fin_gate = {
       effects: () => { chronicle(`${V().lieutenant.name}, once spared, opened the gate for you.`); },
       text: s => P(`You slip inside. As you pass, ${V().lieutenant.name} speaks without looking at you. "A life for a life. We're even." Then, quieter: "${V().short} is in the inner hall. Whatever you're going to do, do it fast."`),
       next: 'fin_throne',
+    },
+    {
+      label: 'Ser Aldane\'s knights storm the gate', req: () => hasAlly('knights'),
+      text: s => P(`The Knights of the Hearth thunder up the road in a wedge of red and gold. ${bgHero('knight') ? bgHero('knight').name + ' rides at Aldane\'s side, banner high.' : ''} The gate splinters. In the chaos, you slip through into the keep.`),
+      next: 'fin_throne',
+    },
+    {
+      label: 'Your old comrades open the door', req: () => pq('deserter', 'inside'),
+      effects: () => chronicle(`The deserters inside ${V().stronghold} opened a door for ${bgHero('deserter') ? bgHero('deserter').name : 'you'}.`),
+      text: s => P(`A side door opens a crack at the agreed signal. Marrow's face, pale in the dark. "Quick. The six of us — we'll hold the stair." He looks at ${bgHero('deserter') ? bgHero('deserter').name : 'you'}. "You kept your word. So will we."`),
+      next: 'fin_throne',
+    },
+    {
+      label: 'Use the Gutter King\'s key', req: () => pq('smuggler', 'ally'),
+      text: P(`Silas Crane's people have been busy. The servants' gate is unlocked, the guard drunk, and someone has drawn a little chalk arrow on the wall pointing inward. The Gutter King pays his debts.`),
+      next: 'fin_throne',
+    },
+    {
+      label: '[Knight] Face the gate — the one that looks like Redford', req: () => pq('knight', 'broken') && bgHero('knight') && bgHero('knight').hp > 0,
+      check: { skill: 'wis', dc: 13 }, noTempt: true,
+      success: { effects: () => { flag('knight_resolve'); chronicle(`${bgHero('knight').name} faced their fear at the gates at last.`); }, text: (s, c) => P(`The same river smell. The same screaming. ${c.char.name} stops, shaking — and then walks forward anyway, alone, straight at the gate. The guards are so astonished that the first two die before they raise their weapons. ${c.char.name} isn't running. Not ever again.`, `(${c.char.name} fights with +2 attack in the final battle.)`), next: 'fin_gate_fight' },
+      failure: { text: (s, c) => P(`${c.char.name} freezes at the sight of the gate. Someone else has to pull them into cover. The guards are coming.`), next: 'fin_gate_fight' },
     },
     {
       label: 'Follow the dwarves through their tunnel', req: () => hasAlly('miners'),
@@ -118,7 +146,7 @@ SCENES.fin_gate_fight = {
         const l = [];
         if (!G.rival.slain && !G.rival.spared) l.push(lieutenant());
         l.push(minion(), minion());
-        if (!solo()) l.push(foe('hollowed'));
+        if (!solo() && !has('villain_misled')) l.push(foe('hollowed'));
         if (G.doom >= 6) l.push(foe('hollowed'));
         return l;
       },
@@ -150,6 +178,12 @@ SCENES.fin_throne = {
     if (has('axe_reforged')) lines.push(`${v.short}'s eyes go to Florian's Axe in your hands, and for the first time, you see fear in them.`);
     lines.push(`"So," ${v.short} says. "${G.party.map(c => c.name).join(' and ')}. You've cost me a great deal." ${v.motive}`);
     if (hasAlly('monks')) lines.push(`<i>The monks of the Silent Order hum a single note behind you, and your wounds close.</i>`);
+    const des = bgHero('deserter');
+    if (des) lines.push(`${v.short}'s eyes find ${des.name} and narrow. "You. I remember you. I should have had you hunted down." ${pq('deserter', 'silenced') ? '"Though I hear you have been doing my work for me."' : ''}`);
+    const dsc = bgHero('descendant');
+    if (dsc && G.villain === 'morvane' && pq('descendant', 'blood')) lines.push(`Morvane stares at ${dsc.name}. "Thane blood," he breathes. "I can smell it on you. Cousin."`);
+    const tch = bgHero('touched');
+    if (tch && pq('touched', 'embraced')) lines.push(`The Hollow stirs in the crack in the floor — and ${tch.name} can feel it, through the door inside them. It is not all-powerful. It is <i>hungry</i>, and it is afraid of being sealed again.`);
     if (G.clues.length >= 2) lines.push(`You know things about ${v.short} that ${v.pronoun} doesn't know you know. ${G.clues.length >= 3 ? 'All of it.' : 'Enough, maybe.'}`);
     return P(...lines);
   },
@@ -158,7 +192,7 @@ SCENES.fin_throne = {
       label: V().truthLabel,
       req: () => G.clues.length >= 2, showLocked: true,
       hint: G.clues.length >= 2 ? undefined : `You need to know more of ${V().short}'s secrets (${G.clues.length}/2 learned)`,
-      check: { skill: V().truthSkill, dc: s => 16 - (G.clues.length >= 3 ? 3 : 0) - (has('captured') ? 0 : 1) },
+      check: { skill: V().truthSkill, dc: s => 16 - (G.clues.length >= 3 ? 3 : 0) - (has('captured') ? 0 : 1) - (bgHero('deserter') ? 2 : 0) - (pq('touched', 'embraced') && bgHero('touched') ? 3 : 0) },
       success: {
         effects: () => { flag('villain_redeemed'); chronicle(`Reached the person inside ${V().name}, and turned ${V().object} against the Hollow.`); giveXp(150); },
         text: s => P(V().truthWin, `The crack in the floor splits wide. Out of it climbs something that was never a person: a shape of ash and hunger, wearing the Hollow's grey like skin. <b>The Hollow Made Flesh.</b>`),
@@ -270,7 +304,7 @@ SCENES.fin_avatar = {
 SCENES.fin_seal = {
   title: 'The Sealing',
   text: s => {
-    if (has('axe_reforged') && G.party.every(c => (c.corruption || 0) >= 5)) return P(`You stand over the wound in the world with Florian's Axe in your hands — and it is fighting you. The haft is hot. The rune flickers like a guttering candle. The axe was made by people who refused the Hollow. It knows what you have let in.`);
+    if (has('axe_reforged') && G.party.every(c => (c.corruption || 0) >= 5) && !(pq('descendant', 'blood') && bgHero('descendant'))) return P(`You stand over the wound in the world with Florian's Axe in your hands — and it is fighting you. The haft is hot. The rune flickers like a guttering candle. The axe was made by people who refused the Hollow. It knows what you have let in.`);
     if (has('axe_reforged')) return P(`You stand over the wound in the world with Florian's Axe in your hands. It's heavier than it looks. It always was.`, `You understand now what Florian understood. The axe doesn't cut the Hollow. It cuts the <i>ground</i> — closes it, like a seam. And it has to be swung by someone who isn't swinging it for themselves.`);
     return P(
       `All three pieces of Florian's Axe lie before you at last — but in pieces still, and there is no anvil here, no smith, no time.`,
@@ -278,7 +312,7 @@ SCENES.fin_seal = {
     );
   },
   choices: s => {
-    if (has('axe_reforged') && G.party.every(c => (c.corruption || 0) >= 5)) return [{
+    if (has('axe_reforged') && G.party.every(c => (c.corruption || 0) >= 5) && !(pq('descendant', 'blood') && bgHero('descendant'))) return [{
       label: 'Force the axe to obey',
       check: { skill: 'wis', dc: 14, mods: () => [hasAlly('florian') && { label: 'Florian\'s hand on yours', value: 3 }, hasAlly('monks') && { label: 'The Silent Order\'s note', value: 2 }] },
       noTempt: true, noPartial: true,
@@ -295,7 +329,7 @@ SCENES.fin_seal = {
         label: 'Reforge the axe in the field with the binding words',
         check: {
           skill: 'lore', dc: 16,
-          mods: () => [hasAlly('keeper') && { label: `Keeper ${G.flags.keeper}'s oath-book`, value: 3 }, hasAlly('florian') && { label: 'Florian guides your hands', value: 3 }, hasItem('rune_key') && { label: 'Dwarven runes', value: 1 }, has('villain_redeemed') && { label: `${V().short} lends ${V().possessive} power`, value: 2 }],
+          mods: () => [hasAlly('keeper') && { label: `Keeper ${G.flags.keeper}'s oath-book`, value: 3 }, hasAlly('florian') && { label: 'Florian guides your hands', value: 3 }, hasItem('rune_key') && { label: 'Dwarven runes', value: 1 }, pq('descendant', 'blood') && bgHero('descendant') && { label: 'Florian\'s blood', value: 4 }, pq('descendant', 'deeds') && bgHero('descendant') && { label: 'Deeds, not blood', value: 2 }, has('villain_redeemed') && { label: `${V().short} lends ${V().possessive} power`, value: 2 }],
         },
         success: { effects: () => flag('field_forged'), text: (s, c) => P(`${c.char.name} holds the pieces together with bare hands and speaks the words. The rune flares white. Head, haft and rune fuse with a sound like a tree drawing breath — and Florian's Axe is whole. There is no time to marvel. You raise it and bring it down on the wound in the world.`), next: 'end_victory' },
         failure: { text: (s, c) => P(`${c.char.name} speaks the words, but the pieces won't hold. They fuse — barely, crookedly — and the rune is cracked. The axe will close the wound. But it will not close it for free. Someone must hold it in the seam while it heals, and whoever does will not come back.`), next: 'fin_price' },
@@ -326,6 +360,16 @@ function epilogue() {
   else if ((G.flags.refusals || 0) >= 2) e.push(`The Hollow offered you its help, again and again. You never took it. The Keepers write that down twice.`);
   if ((G.flags.mercy || 0) >= 2) e.push(`Some of the ${V().minions} you spared find honest work. One of them names a child after ${G.party[0] ? G.party[0].name : 'you'}.`);
   if ((G.flags.cruelty || 0) >= 2) e.push(`In the villages, they whisper about the heroes who left no prisoners. They are grateful. They are also afraid.`);
+  if (pq('knight', 'redeemed')) e.push(`Ser ${bgHero('knight') ? bgHero('knight').name : 'the knight'} is restored to the Order of the Hearth. They tell the story of Redford Bridge themselves now — both of them.`);
+  if (pq('knight', 'broken') && !has('knight_resolve')) e.push(`Ser Aldane's notched sword hangs over the hearth at the Copper Kettle. Nobody asks the knight about it.`);
+  if (pq('healer', 'cure')) e.push(`The Grey-Cure is brewed in every town in the valley. Thousands of husks wake up. Tobin becomes a healer too, and a much worse cook.`);
+  if (pq('smuggler', 'enemy')) e.push(`The Gutter King never forgives a debt. Some debts follow you all your life.`);
+  if (pq('deserter', 'inside')) e.push(`Marrow and the deserters keep their freedom, as promised. One of them becomes a Keeper.`);
+  if (pq('descendant', 'blood')) e.push(`The Keepers add a name to Florian's line on the haft, carved small, at the very end.`);
+  if (pq('descendant', 'liar')) e.push(`Everyone believes they fought beside Florian's heir. Perhaps, in every way that matters, they did.`);
+  if (pq('touched', 'closed')) e.push(`The door is closed. For the rest of their life, the Hollow-touched one sleeps without dreams.`);
+  if (pq('touched', 'embraced')) e.push(`The one who walked through the door never fully comes back. But the Keepers consult them on everything to do with the Hollow, and they are never wrong.`);
+  if (!solo() && G.bond !== undefined) e.push(G.bond >= 8 ? `${G.party[0].name} and ${G.party[1].name} remain inseparable for the rest of their lives.` : G.bond <= 2 ? `${G.party[0].name} and ${G.party[1].name} part ways at Hearthmoor's gate and never quite manage to write.` : `${G.party[0].name} and ${G.party[1].name} meet every year on the anniversary, to drink to the ones who didn't come home.`);
   if (has('warden_broken')) e.push(`The Drowned Warden never rises from the fen again. The bog creeps a little further every year.`);
   if (has('florian_destroyed')) e.push(`The stones of the Barrow Downs never whisper again.`);
   if (G.doom >= 7) e.push(`The Hollow had spread far before the end. It will be a generation before the grey fades from the northern hills.`);

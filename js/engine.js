@@ -225,7 +225,9 @@ const Engine = {
       difficulty: opts.difficulty || 'normal',
       temptCD: 5,
       fallen: [],
+      bondType: chars.length === 2 ? (opts.bondType || 'strangers') : undefined,
     };
+    if (G.bondType) G.bond = BONDS[G.bondType].start;
     chars.forEach(c => { c.corruption = c.corruption || 0; c.injuries = c.injuries || []; });
     Engine.go(G.hook);
   },
@@ -264,7 +266,7 @@ const Engine = {
     const title = typeof sc.title === 'function' ? sc.title(G) : sc.title;
     const text = typeof sc.text === 'function' ? sc.text(G) : sc.text;
     const choices = Engine.choicesFor(sc);
-    UI.renderScene({ id, title, text, choices, notes: G._notes.slice(), ending: sc.ending, art: sc.art });
+    UI.renderScene({ id, title, text, choices, notes: G._notes.slice(), ending: sc.ending, art: sc.art, vote: !!sc.vote && G.party.length === 2 && alive().length === 2 && choices.filter(c => !c.locked).length > 1 });
     G._notes = [];
   },
 
@@ -398,11 +400,19 @@ const Engine = {
     return null;
   },
 
+  combatActions(def) {
+    const list = def.actions ? def.actions(G).filter(Boolean) : [];
+    if (!solo() && G.bond >= 8) list.push(Object.assign({}, BATTLE_ACTIONS.as_one));
+    if (G.pack.grey_cure) list.push(Object.assign({}, BATTLE_ACTIONS.cure_husks));
+    return list;
+  },
+
   startCombat(def) {
     const enemies = def.enemies(G);
     const intro = typeof def.intro === 'function' ? def.intro(G) : def.intro;
     Combat.start({
-      enemies, intro, allyStrikes: def.allyStrikes ? def.allyStrikes(G) : [], actions: def.actions ? def.actions(G).filter(Boolean) : [],
+      enemies, intro, allyStrikes: def.allyStrikes ? def.allyStrikes(G) : [], actions: Engine.combatActions(def),
+      heroBuffs: (def.deadly && has('knight_resolve') && bgHero('knight')) ? { [bgHero('knight').id]: 2 } : {},
       noSurrender: def.noSurrender, noTempt: def.noTempt,
       fleeable: def.fleeable !== false && !def.deadly, fleeDC: def.fleeDC || 12,
       onEnd: (result, cctx) => {
@@ -430,6 +440,30 @@ const Engine = {
     });
   },
 };
+/* Two players disagree: argue it out. */
+Engine.vote = function (a, b) {
+  G._notes = [];
+  const strip = s => String(s).replace(/<[^>]+>/g, '').replace(/^\[[^\]]+\]\s*/, '');
+  if (a === b || a.label === b.label) {
+    bond(1);
+    const notes = G._notes.slice(); G._notes = [];
+    UI.showOutcome({ text: P(`You look at each other and nod. You are of one mind.`), notes, onContinue: () => Engine.choose(a) });
+    return;
+  }
+  const [p1, p2] = G.party;
+  const r1 = Dice.d(20) + Character.checkBonus(p1, 'persuasion').total + (G.bondType === 'mentor' ? 1 : 0);
+  const r2 = Dice.d(20) + Character.checkBonus(p2, 'persuasion').total;
+  const w = r1 >= r2 ? p1 : p2, l = w === p1 ? p2 : p1, win = w === p1 ? a : b;
+  bond(-1);
+  chronicle(`${w.name} overruled ${l.name}: "${strip(win.label)}".`);
+  const notes = G._notes.slice(); G._notes = [];
+  UI.showOutcome({
+    text: P(`${p1.name} wants to <b>${strip(a.label).toLowerCase()}</b>. ${p2.name} wants to <b>${strip(b.label).toLowerCase()}</b>.`,
+      `It turns into an argument — low and fierce. (${p1.name} rolls ${r1}, ${p2.name} rolls ${r2}.) In the end, ${l.name} throws up their hands. "Fine. Your way. But I'm remembering this."`),
+    notes, onContinue: () => Engine.choose(win),
+  });
+};
+
 /* Beaten enemies beg for mercy. What you do with them is remembered. */
 Engine.surrenderFork = function (def, cctx) {
   const who = cctx.surrendered.length === 1 ? cctx.surrendered[0] : `${numWord(cctx.surrendered.length)} survivors`;
@@ -521,6 +555,17 @@ const BATTLE_ACTIONS = {
     success: () => Combat.livingEnemies().forEach(e => { e.status.exposed = 3; e.status.rattled = 1; }), failure: h => Combat.hurtHero(h, '1d6', 'The Hollow lashes at the light and') },
   florian_call: { label: 'Call on Florian\'s name', desc: 'His shade strikes alongside you', req: () => hasAlly('florian'),
     success: () => Combat.livingEnemies().forEach(e => Combat.hitOne(e, '3d6', 'Florian\'s ghostly axe')) },
+};
+BATTLE_ACTIONS.cure_husks = {
+  label: 'Throw the Grey-Cure over the husks', desc: 'Uses one Grey-Cure: every hollowed husk wakes and flees, cured',
+  success: () => {
+    if (!G.pack.grey_cure) return;
+    G.pack.grey_cure--; if (!G.pack.grey_cure) delete G.pack.grey_cure;
+    let n = 0;
+    Combat.livingEnemies().forEach(e => { if (/Husk/.test(e.name)) { e.hp = 0; e.yielded = true; n++; } });
+    G.flags.cured_husks = (G.flags.cured_husks || 0) + n;
+    Combat.log(n ? `The tincture shimmers in the air. ${n === 1 ? 'A husk stops' : n + ' husks stop'}, blink${n === 1 ? 's' : ''} — and run${n === 1 ? 's' : ''} away, crying, human again.` : 'The tincture shimmers in the air — but there are no husks here to wake.', 'heal');
+  },
 };
 function battleActions(...keys) {
   return keys.map(k => BATTLE_ACTIONS[k]).filter(a => a && (!a.req || a.req())).map(a => Object.assign({}, a, { req: undefined }));
