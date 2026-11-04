@@ -64,6 +64,7 @@ SCENES.barrow_shades = {
   choices: s => [{
     label: 'Fight your way through',
     combat: {
+      actions: s => battleActions('keeper_sigil', 'grave_salt'),
       enemies: s => solo() ? [foe('shade_guard'), foe('shade_guard')] : [foe('shade_guard'), foe('shade_guard'), foe('shade_guard')],
       win: { text: P(`The last shade breaks apart like fog in the wind. You hurry on toward the tomb — but you've lost time, and you can hear the robbers ahead.`), next: 'barrow_tomb' },
       flee: { effects: () => hurtAll('1d6'), text: P(`You run the gauntlet, cold blades raking you, and burst out of the far end of the hall.`), next: 'barrow_tomb' },
@@ -102,6 +103,9 @@ SCENES.barrow_tomb = {
       },
       failure: { text: (s, c) => P(`${c.char.name}'s voice cracks on the first note. The shade screams over it. The cultists seize their chance and turn on you.`), next: 'barrow_tomb_fight' },
     },
+    hollowOption('Silence the shade with the Hollow\'s whisper',
+      s => P(`${mostCorrupt().name} speaks a word that the Hollow has been teaching them in their dreams. Florian's shade stops screaming. It stops moving at all. Then it comes apart like smoke, and its hands open, and ${regionFrag('barrow').name} falls into the coffin with a dull clink.`, `The grave-robbers flee in terror of you. The tomb is very, very quiet.`),
+      'barrow_win', 2, () => flag('florian_destroyed')),
     { label: 'Attack the grave-robbers', next: 'barrow_tomb_fight' },
   ],
 };
@@ -112,6 +116,7 @@ SCENES.barrow_tomb_fight = {
   choices: s => [{
     label: 'Fight!',
     combat: {
+      actions: s => battleActions('grave_salt'),
       enemies: s => { const l = []; for (let i = 0; i < (solo() ? 2 : 3); i++) l.push(minion(V().minion + ' robber')); return l; },
       win: { text: P(`The last robber falls across the sarcophagus. The shade looks down at the bodies — then up at you. Its rage is cooling, a little.`), next: 'barrow_shade' },
       flee: { text: P(`You flee the tomb. Behind you, the cultists finish their work and escape by another way.`), next: 'barrow_lost' },
@@ -154,10 +159,10 @@ SCENES.barrow_shade = {
 
 SCENES.barrow_win = {
   title: 'Recovered',
-  first: s => { gainFragment('barrow'); if (hasAlly('florian')) chronicle('Laid the shade of Florian Thane to rest — and won his promise to return.'); },
+  first: s => { gainFragment('barrow'); if (has('florian_destroyed')) chronicle('Unmade the shade of Florian Thane with the Hollow\'s voice.'); if (hasAlly('florian')) chronicle('Laid the shade of Florian Thane to rest — and won his promise to return.'); },
   text: s => P(
     `<b>${regionFrag('barrow').name}</b> — ${regionFrag('barrow').desc} — rests in your hands. It was carried into this tomb by the Keepers a hundred years ago, and now it's leaving again.`,
-    `You lower the lid back onto the sarcophagus, gently. Outside, the standing stones have begun to whisper again.`
+    has('florian_destroyed') ? `You do not bother with the lid. Outside, the standing stones are silent, and you have the feeling they will stay that way.` : `You lower the lid back onto the sarcophagus, gently. Outside, the standing stones have begun to whisper again.`
   ),
   choices: [{ label: 'Leave the barrow', next: 'barrow_end' }],
 };

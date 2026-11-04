@@ -17,6 +17,7 @@ function bossFight() {
   const b = V().boss;
   const vf = fragCount('villain');
   const boss = foe({ noScale: true, name: b.name, hp: b.hp + G.doom * 4 + vf * 10, ac: b.ac + (vf >= 2 ? 1 : 0), atk: b.atk + vf, dmg: b.dmg, fire: b.fire, heals: b.heals, xp: b.xp, boss: true, burst: '2d6' });
+  boss.phases = V().phases;
   if (hasAlly('nan')) { boss.ac -= 1; }
   return boss;
 }
@@ -112,6 +113,7 @@ SCENES.fin_gate_fight = {
   choices: s => [{
     label: 'Fight your way through!',
     combat: {
+      actions: s => battleActions('ballista'),
       enemies: s => {
         const l = [];
         if (!G.rival.slain && !G.rival.spared) l.push(lieutenant());
@@ -169,9 +171,32 @@ SCENES.fin_throne = {
       },
     },
     {
+      label: `Take the crown the Hollow is offering`, hollow: true,
+      req: () => maxCorruption() >= 6,
+      hint: `${mostCorrupt().name} hears the Hollow calling them heir`,
+      text: s => P(`${V().short} smiles, and it is a terrible, tired smile. "I see it in you, ${mostCorrupt().name}. The grey. You've let it in already — more than once." ${cap(V().pronoun)} holds out a hand. "Why fight me? Stand beside me. Rule it. Nothing will ever hurt you again."`, `And the worst part is how much you want to.`),
+      next: 'fin_crown',
+    },
+    {
       label: 'Attack!',
       text: s => P(`No more words. ${V().short} raises ${V().possessive} weapon, and the Hollow rises behind ${V().object} like a wave.`),
       next: 'fin_battle',
+    },
+  ],
+};
+
+SCENES.fin_crown = {
+  title: 'The Grey Crown',
+  text: s => P(`The crack in the floor breathes. You can hear it now, clearly, the voice that has followed you since the first time you said yes: <i>"Come home."</i>`,
+    !solo() && `Beside you, ${G.party.find(c => c !== mostCorrupt()).name} grabs ${mostCorrupt().name}'s arm. "Don't. Look at me. Don't."`),
+  choices: s => [
+    { label: 'Accept', hollow: true, effects: () => { corrupt(mostCorrupt(), 10); chronicle(`${mostCorrupt().name} took the Grey Crown.`); }, next: 'end_dark' },
+    {
+      label: 'Tear yourself away',
+      check: { skill: 'wis', dc: s => 10 + Math.floor(maxCorruption() / 2) + (solo() ? 0 : -2), noTempt: true, mods: () => [!solo() && { label: 'A friend\'s hand on your arm', value: 2 }] },
+      noTempt: true,
+      success: { effects: () => { G.party.forEach(c => { if (c.corruption) corrupt(c, -2); }); flag('rejected_crown'); chronicle('Rejected the Grey Crown at the last.'); }, text: (s, c) => P(`${c.char.name} pulls back from the edge. The grey in them recoils, like a hand from a flame. For the first time in weeks, they feel light. ${V().short}'s face hardens. "Then you'll die with the rest of them."`), next: 'fin_battle' },
+      failure: { effects: () => { flag('villain_enraged'); }, text: (s, c) => P(`${c.char.name} cannot look away — but cannot step forward either. ${V().short} loses patience. "Then I'll take it from you." The fight begins with ${c.char.name} still shaking.`), next: 'fin_battle' },
     },
   ],
 };
@@ -188,6 +213,7 @@ SCENES.fin_battle = {
     label: 'For Florian!',
     combat: {
       deadly: true,
+      actions: s => battleActions('fragment_light', 'florian_call'),
       enemies: s => {
         const l = [bossFight()];
         if (!hasAlly('miners')) l.push(minion());
@@ -222,9 +248,11 @@ SCENES.fin_avatar = {
     label: 'Fight together!',
     combat: {
       deadly: true,
+      actions: s => battleActions('fragment_light', 'florian_call'),
       enemies: s => {
         const vf = fragCount('villain');
-        const e = foe({ noScale: true, name: 'The Hollow Made Flesh', hp: 70 + G.doom * 4 + vf * 8, ac: 14, atk: 6, dmg: '2d6+2', hollow: true, boss: true, burst: '2d6', xp: 400 });
+        const e = foe({ noScale: true, name: 'The Hollow Made Flesh', hp: 70 + G.doom * 4 + vf * 8, ac: 14, atk: 6, dmg: '2d6+2', hollow: true, boss: true, burst: '2d6', xp: 400,
+          phases: [{ line: 'The Hollow Made Flesh splits its mouth wider and vomits grey husks onto the floor.', summon: 1 }, { line: 'The thing begins to come apart — and, coming apart, grows bigger. Ash fills the hall like a blizzard.', atk: 2, desperate: true }] });
         return [e];
       },
       allyStrikes: s => [{ name: V().short, verb: 'strikes at', dmg: '2d6+2' }].concat(finaleAllyStrikes()),
@@ -242,6 +270,7 @@ SCENES.fin_avatar = {
 SCENES.fin_seal = {
   title: 'The Sealing',
   text: s => {
+    if (has('axe_reforged') && G.party.every(c => (c.corruption || 0) >= 5)) return P(`You stand over the wound in the world with Florian's Axe in your hands — and it is fighting you. The haft is hot. The rune flickers like a guttering candle. The axe was made by people who refused the Hollow. It knows what you have let in.`);
     if (has('axe_reforged')) return P(`You stand over the wound in the world with Florian's Axe in your hands. It's heavier than it looks. It always was.`, `You understand now what Florian understood. The axe doesn't cut the Hollow. It cuts the <i>ground</i> — closes it, like a seam. And it has to be swung by someone who isn't swinging it for themselves.`);
     return P(
       `All three pieces of Florian's Axe lie before you at last — but in pieces still, and there is no anvil here, no smith, no time.`,
@@ -249,6 +278,13 @@ SCENES.fin_seal = {
     );
   },
   choices: s => {
+    if (has('axe_reforged') && G.party.every(c => (c.corruption || 0) >= 5)) return [{
+      label: 'Force the axe to obey',
+      check: { skill: 'wis', dc: 14, mods: () => [hasAlly('florian') && { label: 'Florian\'s hand on yours', value: 3 }, hasAlly('monks') && { label: 'The Silent Order\'s note', value: 2 }] },
+      noTempt: true, noPartial: true,
+      success: { text: (s, c) => P(`The haft burns like a brand in ${c.char.name}'s hands — the axe knows what is in them. ${c.char.name} holds on anyway, weeping, and brings it down.`), next: 'end_victory' },
+      failure: { text: (s, c) => P(`The axe twists out of ${c.char.name}'s grip as though it were alive. It falls into the crack — cracked, sputtering — and wedges there, half-closing the wound. Someone has to go down and hold it in place.`), next: 'fin_price' },
+    }];
     if (has('axe_reforged')) return [{
       label: both('Raise the axe and bring it down', 'Grip the haft together, and bring it down'),
       text: s => P(both(`You raise the axe. You think of everyone who helped you get here. You bring it down.`, `You both take hold of the haft. Neither of you says anything. You don't need to. You bring it down together.`)),
@@ -283,6 +319,15 @@ SCENES.fin_price = {
 /* ---------- Endings ---------- */
 function epilogue() {
   const e = [];
+  if (G.fallen && G.fallen.length) G.fallen.forEach(f => e.push(`${f.name} the ${f.desc} is buried beside the road in Hearthmoor. Travellers leave axes carved from kindling on the grave.`));
+  const mc = maxCorruption();
+  if (mc >= 7 && !has('ending_dark')) e.push(`${mostCorrupt().name} never quite gets the grey out of their eyes. Some nights they stand at the window for hours, listening to something nobody else can hear.`);
+  else if (mc >= 4 && !has('ending_dark')) e.push(`The grey veins fade from ${mostCorrupt().name}'s skin, slowly, over many years. Not entirely.`);
+  else if ((G.flags.refusals || 0) >= 2) e.push(`The Hollow offered you its help, again and again. You never took it. The Keepers write that down twice.`);
+  if ((G.flags.mercy || 0) >= 2) e.push(`Some of the ${V().minions} you spared find honest work. One of them names a child after ${G.party[0] ? G.party[0].name : 'you'}.`);
+  if ((G.flags.cruelty || 0) >= 2) e.push(`In the villages, they whisper about the heroes who left no prisoners. They are grateful. They are also afraid.`);
+  if (has('warden_broken')) e.push(`The Drowned Warden never rises from the fen again. The bog creeps a little further every year.`);
+  if (has('florian_destroyed')) e.push(`The stones of the Barrow Downs never whisper again.`);
   if (G.doom >= 7) e.push(`The Hollow had spread far before the end. It will be a generation before the grey fades from the northern hills.`);
   else if (G.doom >= 4) e.push(`The grey recedes slowly from the land. Some fields will lie fallow for years. But they will grow again.`);
   else e.push(`You moved fast enough. Within a season, the grey has vanished from the land as though it was never there.`);
@@ -356,6 +401,19 @@ SCENES.end_sacrifice = {
     ]);
   },
   choices: [{ label: 'Play again — a new tale', ui: 'newgame' }],
+};
+
+SCENES.end_dark = {
+  title: 'The Grey Heir', ending: 'defeat',
+  first: () => flag('ending_dark'),
+  text: s => endingText([
+    `${mostCorrupt().name} takes ${V().short}'s hand, and the grey rushes in like water into a broken hull.`,
+    `It doesn't hurt. That's the worst of it. It feels like coming home. ${V().short} kneels — then crumbles, used up, a husk of ash. The Hollow has a new heir now, younger and stronger, who knows every road and every friend that might be sent against it.`,
+    !solo() && `${G.party.find(c => c !== mostCorrupt()) ? G.party.find(c => c !== mostCorrupt()).name : 'Your companion'} escapes ${V().stronghold} alone, carrying what's left of the axe. Someone will have to try again. Someone will have to come for you.`,
+    `The colour drains from the world, one valley at a time. In a hundred years, perhaps, a woodcutter will pick up an axe.`,
+    `<b>The Hollow has won — through you.</b>`,
+  ]),
+  choices: [{ label: 'Try again — a new tale', ui: 'newgame' }],
 };
 
 SCENES.end_defeat = {

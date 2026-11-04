@@ -14,6 +14,7 @@ SCENES.int_traveler = {
     {
       label: 'Charge the wolves',
       combat: {
+        actions: s => battleActions('firebrand'),
         enemies: s => solo() ? [foe('hollow_wolf'), foe('hollow_wolf')] : [foe('hollow_wolf'), foe('hollow_wolf'), foe('hollow_wolf')],
         win: { text: P(`The last wolf yelps and falls. You heave the horse off the ranger's leg.`), next: 'int_traveler_tend' },
         flee: { effects: () => flag('sela_abandoned'), text: P(`You run. The ranger's shouts follow you down the road, then stop.`), next: 'hub' },
@@ -41,6 +42,7 @@ SCENES.int_traveler_fight = {
   choices: s => [{
     label: 'Fight!',
     combat: {
+      actions: s => battleActions('firebrand'),
       enemies: s => solo() ? [foe('hollow_wolf'), foe('hollow_wolf')] : [foe('hollow_wolf'), foe('hollow_wolf'), foe('hollow_wolf')],
       win: { text: P(`The last wolf falls. You heave the horse off the ranger's leg.`), next: 'int_traveler_tend' },
       flee: { effects: () => flag('sela_abandoned'), text: P(`You run. The ranger's shouts stop behind you.`), next: 'hub' },
@@ -106,6 +108,7 @@ SCENES.int_village = {
       label: 'Go down the well and destroy whatever is there',
       combat: {
         intro: 'At the bottom of the well, in a cave of grey slime, shambling figures turn toward you — villagers who went down and never came up.',
+        actions: s => battleActions('well_rope'),
         enemies: s => solo() ? [foe('hollowed'), foe('hollowed')] : [foe('hollowed'), foe('hollowed'), foe('hollowed')],
         win: {
           effects: () => { flag('greywater_saved'); doom(-1); chronicle('Purged the Hollow from the well of Greywater.'); },
@@ -189,6 +192,8 @@ SCENES.int_rival = {
     {
       label: 'Fight!',
       combat: {
+        actions: s => battleActions('rockslide'),
+        noSurrender: true,
         enemies: s => { const l = [lieutenant()]; if (!solo()) l.push(minion()); if (G.doom >= 5) l.push(minion()); return l; },
         win: { effects: () => { G.rival.beaten++; }, text: s => P(`${V().lieutenant.name} goes down on one knee in the dust, ${V().lieutenant.his} weapon knocked from ${V().lieutenant.his} hand, followers dead or fled. "Finish it, then," ${V().lieutenant.he} spits.`), next: 'int_rival_mercy' },
         flee: {

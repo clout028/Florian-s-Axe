@@ -40,6 +40,7 @@ SCENES.pro_thornbury = {
       label: 'Charge the attackers at Edda\'s cottage',
       combat: {
         intro: s => `Two ${V().minionPlural} turn from the cottage door, blades drawn.`,
+        actions: s => battleActions('burning_cart'),
         enemies: s => [minion(), minion()],
         fleeable: false,
         win: {
@@ -87,6 +88,7 @@ SCENES.pro_tavern = {
       label: 'Stand between Aldric and the door, weapons ready',
       combat: {
         intro: s => `${cap(numWord(solo() ? 2 : 3))} ${V().minionPlural} kick through the door, shaking rain from their hoods.`,
+        actions: s => battleActions('lantern_oil', 'chandelier'),
         enemies: s => solo() ? [minion(), minion()] : [minion(), minion(), minion()],
         fleeable: false,
         win: { effects: () => flag('keeper_alive'), text: P(`The last of them crashes through a table and doesn't rise. The tavern-keeper peeks out from behind the bar. Aldric, pale but alive, presses the leather tube into your hands. "You'll do," he says.`), next: 'pro_rival' },
@@ -118,6 +120,7 @@ SCENES.pro_tavern_fight = {
   choices: s => [{
     label: 'Fight!',
     combat: {
+      actions: s => battleActions('chandelier'),
       enemies: s => [minion(), minion()],
       fleeable: false,
       win: { effects: () => flag('keeper_alive'), text: P(`The cultists lie still. Aldric, grey-faced, gives you the leather tube with trembling hands. "Take it. I'm too old to run any more."`), next: 'pro_rival' },
@@ -164,6 +167,7 @@ SCENES.pro_caravan_fight = {
   choices: s => [{
     label: 'Defend the wagon',
     combat: {
+      actions: s => battleActions('runaway_wagon'),
       enemies: s => solo() ? [minion(), minion()] : [minion(), minion(), minion()],
       fleeable: false,
       win: { effects: () => flag('keeper_alive'), text: P(`The ambushers break and flee. Ilsa climbs down from the wagon, a bloody knife in her own hand, and opens the chest. "I'm a Keeper," she says, unrolling a leather map. "You've earned the truth."`), next: 'pro_rival' },

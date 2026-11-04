@@ -70,6 +70,7 @@ SCENES.peak_abbot = {
       req: () => !has('monks_freed') && !has('monks_lost'),
       combat: {
         intro: s => `The ${V().minionPlural} leap up from their meal, knocking over censers of grey smoke.`,
+        actions: s => battleActions('censers'),
         enemies: s => { const l = [minion(), minion()]; if (!solo()) l.push(minion()); return l; },
         win: {
           effects: () => { flag('monks_freed'); addAlly('monks', 'the monks of the Silent Order'); addGear('monk_beads'); },
@@ -94,9 +95,13 @@ SCENES.peak_tower = {
     `The wyrm opens one pale eye and looks at you.`
   ),
   choices: s => [
+    hollowOption('Speak to the wyrm in the tongue of the Hollow',
+      s => P(`${mostCorrupt().name} hisses something no human throat should be able to make. The wyrm's pale eyes go wide — it knows that voice. It uncoils from the bell and flees into the storm without a backward glance.`, `As you pry the fragment loose, you realise the monks on the stair have gone silent and drawn back from you.`),
+      'peak_win', 1, () => flag('monks_fear')),
     {
       label: 'Fight the wyrm',
       combat: {
+        actions: s => battleActions('ring_bell'),
         enemies: s => [foe('frost_wyrm')],
         allyStrikes: s => hasAlly('monks') ? [{ name: 'The monks', verb: 'strike with their staves at', dmg: '1d6+2' }] : [],
         win: { text: s => P(`The Frost Wyrm topples off the tower with a shriek and vanishes into the storm. You climb into the bell and pry ${regionFrag('peak').name} out of the clapper.`), next: 'peak_win' },
@@ -130,6 +135,7 @@ SCENES.peak_wyrm_fight = {
   choices: s => [{
     label: 'Fight!',
     combat: {
+      actions: s => battleActions('ring_bell'),
       enemies: s => [foe('frost_wyrm')],
       allyStrikes: s => hasAlly('monks') ? [{ name: 'The monks', verb: 'strike with their staves at', dmg: '1d6+2' }] : [],
       win: { text: s => P(`The wyrm falls from the tower into the storm. You pry ${regionFrag('peak').name} out of the clapper with numb fingers.`), next: 'peak_win' },
@@ -141,10 +147,10 @@ SCENES.peak_wyrm_fight = {
 
 SCENES.peak_win = {
   title: 'Recovered',
-  first: s => { gainFragment('peak'); flag('bell_rang'); },
+  first: s => { gainFragment('peak'); flag('bell_rang'); if (has('monks_fear') && hasAlly('monks')) { loseAlly('monks'); note('The monks will not follow one who speaks with the Hollow\'s voice.', 'bad'); } },
   text: s => P(
     `<b>${regionFrag('peak').name}</b> — ${regionFrag('peak').desc} — is cold as the mountain in your hands, then slowly warms.`,
-    hasAlly('monks') ? `The monks ring the great bell for you as you leave — properly, the true note, the way it has rung every dawn for a hundred years. Abbot Ilvar walks you to the gate. "When you face the darkness," he says, "the Silent Order will break its silence. We will come."` : has('monks_lost') ? `Behind you, the grey monks go on sweeping the courtyard, seeing nothing. You could not save them.` : `The grey-eyed monks still move silently through the courtyard. Whether they will wake, you cannot say.`
+    has('monks_fear') ? `The monks do not ring the bell for you. Abbot Ilvar meets you at the gate and will not take your hand. "We will pray for you," he says, and it does not sound like comfort.` : hasAlly('monks') ? `The monks ring the great bell for you as you leave — properly, the true note, the way it has rung every dawn for a hundred years. Abbot Ilvar walks you to the gate. "When you face the darkness," he says, "the Silent Order will break its silence. We will come."` : has('monks_lost') ? `Behind you, the grey monks go on sweeping the courtyard, seeing nothing. You could not save them.` : `The grey-eyed monks still move silently through the courtyard. Whether they will wake, you cannot say.`
   ),
   choices: [{ label: 'Descend the mountain', next: 'peak_end' }],
 };

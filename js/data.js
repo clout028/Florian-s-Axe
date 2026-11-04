@@ -265,13 +265,13 @@ const SHOP_STOCK = ['potion', 'greater_potion', 'focus_tonic', 'smoke_bomb', 'ro
 /* Enemy templates. hollow: takes double radiant damage. */
 const ENEMIES = {
   bog_leech: { name: 'Bog Leech', hp: 7, ac: 10, atk: 3, dmg: '1d4+1', xp: 15 },
-  hollow_wolf: { name: 'Hollow Wolf', hp: 11, ac: 12, atk: 4, dmg: '1d6+2', xp: 25, hollow: true },
+  hollow_wolf: { name: 'Hollow Wolf', hp: 11, ac: 12, atk: 4, dmg: '1d6+2', xp: 25, hollow: true, bleeds: true },
   hollowed: { name: 'Hollowed Husk', hp: 14, ac: 10, atk: 3, dmg: '1d8', xp: 30, hollow: true },
-  thug: { name: 'Dock Thug', hp: 12, ac: 12, atk: 3, dmg: '1d6+2', xp: 25 },
+  thug: { name: 'Dock Thug', hp: 12, ac: 12, atk: 3, dmg: '1d6+2', xp: 25, canSurrender: true },
   wight: { name: 'Barrow Wight', hp: 20, ac: 13, atk: 4, dmg: '1d8+2', xp: 50, hollow: true },
-  warden: { name: 'The Drowned Warden', hp: 40, ac: 13, atk: 5, dmg: '2d6', xp: 140 },
-  cinder_brute: { name: 'Cinder Brute', hp: 40, ac: 13, atk: 5, dmg: '2d6+1', fire: true, xp: 140 },
-  frost_wyrm: { name: 'Frost Wyrm', hp: 42, ac: 14, atk: 5, dmg: '2d6', xp: 160, sweep: true },
+  warden: { name: 'The Drowned Warden', hp: 40, ac: 13, atk: 5, dmg: '2d6', xp: 140, big: true, phases: [{ line: 'The Warden bellows, and the pool rises with it — black water roars around your knees.', atk: 1 }] },
+  cinder_brute: { name: 'Cinder Brute', hp: 40, ac: 13, atk: 5, dmg: '2d6+1', fire: true, xp: 140, big: true, phases: [{ line: 'Cracks split the Cinder Brute\'s slag-skin, and white-hot fire pours out of them. It moves faster now.', atk: 1 }] },
+  frost_wyrm: { name: 'Frost Wyrm', hp: 42, ac: 14, atk: 5, dmg: '2d6', xp: 160, sweep: true, big: true, chills: true, phases: [{ line: 'The wyrm shrieks and coils tighter around the bell. Frost spreads across the tower floor in jagged ferns.', atk: 1 }] },
   shade_guard: { name: 'Restless Shade', hp: 16, ac: 12, atk: 4, dmg: '1d8+1', xp: 40, hollow: true },
 };
 
@@ -287,11 +287,15 @@ const VILLAINS = {
     motive: 'He claims Florian\'s blood runs in his veins, and that the axe is his birthright — not to seal the Hollow, but to command it.',
     goal: 'reforge the axe in Hollow-fire and make himself its master',
     minion: 'Ash-Sworn cultist', minions: 'Ash-Sworn', minionPlural: 'Ash-Sworn cultists',
-    minionStats: { hp: 10, ac: 12, atk: 3, dmg: '1d6+1', xp: 25 },
+    minionStats: { hp: 10, ac: 12, atk: 3, dmg: '1d6+1', xp: 25, canSurrender: true },
     sigil: 'a black flame inside a broken circle',
     lieutenant: { name: 'Sable', title: 'the Ash Knight', he: 'she', his: 'her', him: 'her', desc: 'a knight in soot-blackened plate whose visor glows like a banked coal', hp: 28, ac: 15, atk: 5, dmg: '1d10+2' },
     stronghold: 'the Ashen Spire', strongholdDesc: 'a tower of fused black glass rising from a crater of grey dust',
     boss: { name: 'Morvane the Ashen', hp: 70, ac: 14, atk: 6, dmg: '2d6+2', fire: true, xp: 400 },
+    phases: [
+      { line: '"You think you can hurt me? I have been burning for thirty years!" Morvane rakes ash from the air and it hardens into soldiers.', summon: 1 },
+      { line: 'Morvane\'s robes are on fire now, and so is he. "If I cannot have it," he screams, "NO ONE WILL!" The Hollow pours through him unchecked.', atk: 2, desperate: true },
+    ],
     clues: [
       'Morvane was born Morvan Thane — a grandson of the Keepers, cast out as a boy for trying to steal the Keeper\'s Map.',
       'The ash that falls from Morvane is his own body. The Hollow is burning him away from the inside in exchange for its power.',
@@ -312,11 +316,15 @@ const VILLAINS = {
     motive: 'She preaches that the Hollow is mercy: an end to grief, hunger and pain. She means to destroy the fragments so the seal can never be renewed.',
     goal: 'shatter the fragments beyond mending and let the Hollow\'s "peace" cover the world',
     minion: 'Grey Penitent', minions: 'Grey Penitents', minionPlural: 'Grey Penitents',
-    minionStats: { hp: 10, ac: 11, atk: 3, dmg: '1d6+1', xp: 25 },
+    minionStats: { hp: 10, ac: 11, atk: 3, dmg: '1d6+1', xp: 25, canSurrender: true },
     sigil: 'an empty grey circle painted over the eyes',
     lieutenant: { name: 'Brother Hollis', title: 'the Confessor', he: 'he', his: 'his', him: 'him', desc: 'a broad, smiling monk who carries a censer of grey smoke and a flanged iron mace', hp: 28, ac: 14, atk: 5, dmg: '1d10+2' },
     stronghold: 'the Pale Cathedral', strongholdDesc: 'a ruined cathedral whose stained glass has gone the colour of dishwater',
     boss: { name: 'Seraphine, the Pale Abbess', hp: 66, ac: 14, atk: 6, dmg: '2d6+2', heals: true, xp: 400 },
+    phases: [
+      { line: '"Children," Seraphine calls softly, "come and rest." Grey figures shuffle out of the pews toward you.', summon: 1 },
+      { line: 'Seraphine\'s serenity shatters. "Lissa, help me!" she sobs — and something answers from beneath the floor, in a voice that is not a child\'s at all.', atk: 2, desperate: true },
+    ],
     clues: [
       'Seraphine was once a healer in the village of Wych Hollow. Plague took everyone she treated — including her daughter, Lissa.',
       'The Hollow speaks to Seraphine in Lissa\'s voice. Her journal records every word. The "daughter" asks her for more and more souls.',
@@ -337,11 +345,15 @@ const VILLAINS = {
     motive: 'His clan\'s lands are dying. He has struck a pact: deliver the axe, and the Hollow will spare his people while it devours everyone else.',
     goal: 'deliver the axe to the Hollow so his clan alone is spared',
     minion: 'Ironjaw raider', minions: 'Ironjaw raiders', minionPlural: 'Ironjaw raiders',
-    minionStats: { hp: 12, ac: 12, atk: 4, dmg: '1d8', xp: 28 },
+    minionStats: { hp: 12, ac: 12, atk: 4, dmg: '1d8', xp: 28, canSurrender: true },
     sigil: 'a red iron jaw on a black field',
     lieutenant: { name: 'Grutha', title: 'Bonebreaker', he: 'she', his: 'her', him: 'her', desc: 'a scarred shield-maiden with a maul as long as she is tall', hp: 30, ac: 14, atk: 5, dmg: '1d12+2' },
     stronghold: 'the Iron Camp at Blackscar', strongholdDesc: 'a palisade of sharpened black logs around a hill of war-tents',
     boss: { name: 'Kharsk Ironjaw', hp: 74, ac: 15, atk: 6, dmg: '2d8+1', xp: 400 },
+    phases: [
+      { line: 'Kharsk spits blood through his iron jaw and roars for his guard. "IRONJAW! TO ME!"', summon: 1 },
+      { line: '"For my son," Kharsk growls, and the grey light of the pact floods his eyes. He stops defending himself entirely.', atk: 2, desperate: true },
+    ],
     clues: [
       'The Ironjaw clan is starving. Kharsk\'s raiders send every coin and crust they seize back north to the clan-holds.',
       'The pact is a lie. Scouts\' letters report the Hollow already creeping into the Ironjaw homeland, despite the bargain.',
@@ -363,3 +375,23 @@ const FRAGMENTS = {
 
 const XP_TABLE = [0, 60, 150, 280, 440, 640, 880, 1200];
 const MAX_LEVEL = 8;
+
+/* Lasting injuries. fx feeds combat numbers; checks are penalties to skills/stats ('all' = every check). */
+const INJURIES = {
+  broken_arm: { name: 'Broken Arm', desc: '−1 attack, −2 Athletics', fx: { attack: -1 }, checks: { athletics: -2 } },
+  cracked_ribs: { name: 'Cracked Ribs', desc: '−6 max HP', fx: { hp: -6 }, checks: {} },
+  concussion: { name: 'Concussion', desc: '−2 to Intelligence and Wisdom checks', fx: {}, checks: { int: -2, wis: -2 } },
+  twisted_ankle: { name: 'Twisted Ankle', desc: '−1 AC, −2 to Dexterity checks', fx: { ac: -1 }, checks: { dex: -2 } },
+  burned_hands: { name: 'Burned Hands', desc: '−1 damage, −2 Sleight of Hand', fx: { damage: -1 }, checks: { sleight: -2 } },
+  hollow_bite: { name: 'Hollow-Bite', desc: '−1 to every check; the grey itches at you', fx: {}, checks: { all: -1 } },
+  scarred_face: { name: 'Fresh Scar', desc: '−2 Persuasion, +2 Intimidation', fx: {}, checks: { persuasion: -2, intimidation: 2 } },
+};
+
+/* The Hollow's gift — available to anyone with Corruption 3+. */
+ABILITIES.grey_fire = { name: 'Grey Fire', cost: 0, target: 'enemy', kind: 'spell', die: '3d8', autoHit: true, corrupting: true, desc: 'The Hollow burns through you: 3d8, never misses. +1 Corruption.' };
+
+const DIFFICULTIES = {
+  story: { name: 'Story', desc: 'Gentler battles. For players who are here for the tale.', hp: 0.75, atk: -1 },
+  normal: { name: 'Adventurer', desc: 'The intended challenge. Defeat bends the story but rarely ends it.', hp: 1, atk: 0 },
+  hardcore: { name: 'Hardcore', desc: 'Permadeath. Heroes left dying after a battle may not wake. Lose any battle and the tale ends.', hp: 1.1, atk: 0, permadeath: true },
+};

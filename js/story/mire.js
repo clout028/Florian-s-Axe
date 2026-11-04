@@ -174,6 +174,7 @@ SCENES.mire_shrine = {
       label: 'Attack while they\'re busy with the chains',
       combat: {
         intro: s => (has('mire_warned') || has('mire_tracks')) ? 'You fall on them from behind. The first one dies without knowing you were there.' : 'They drop their chains and draw steel.',
+        actions: s => battleActions('dredge_chain'),
         enemies: s => {
           const n = mireCount();
           const list = []; for (let i = 0; i < n; i++) list.push(minion());
@@ -222,6 +223,7 @@ SCENES.mire_shrine_fight = {
   choices: s => [{
     label: 'Fight!',
     combat: {
+      actions: s => battleActions('dredge_chain'),
       enemies: s => { const n = mireCount(); const l = []; for (let i = 0; i < n; i++) l.push(minion()); return l; },
       win: { effects: () => flag('mire_minions_dead'), text: P(`The last cultist sinks beneath the black water. Then the pool itself begins to churn.`), next: 'mire_pool' },
       flee: { effects: () => doom(1), text: P(`You fall back into the mist. When you return, the cultists have dredged something up — and the water is heaving.`), next: 'mire_pool' },
@@ -271,6 +273,9 @@ SCENES.mire_pool = {
         next: 'mire_warden_fight',
       },
     },
+    hollowOption('Command the Warden in the Hollow\'s voice',
+      s => P(`${mostCorrupt().name} opens their mouth and something else speaks — a sound like wind across a field of ash. The Warden freezes. Then, slowly, it sinks to its knees, and its mossy eyes go grey. It lifts the fragment out of the pool and offers it up, trembling.`, `You take it. The Warden does not rise again. You are not sure it is still alive.`),
+      'mire_win', 1, () => flag('warden_broken')),
     { label: 'Fight the Warden', next: 'mire_warden_fight' },
   ],
 };
@@ -281,6 +286,7 @@ SCENES.mire_warden_fight = {
   choices: s => [{
     label: 'Fight!',
     combat: {
+      actions: s => battleActions('warden_chain'),
       enemies: s => [foe('warden')],
       fleeDC: 12,
       win: { text: s => P(`The Warden crashes into the pool and breaks apart into peat and rotten timber. The rusted chain slides off its neck. You wade in and lift ${regionFrag('mire').name} from the altar.`), next: 'mire_win' },

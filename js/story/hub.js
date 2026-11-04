@@ -67,6 +67,18 @@ SCENES.hub = {
       next: REGIONS[r].start,
     }));
     list.push({ label: '🛒 Visit the market', hint: 'Buy weapons, armor and supplies', ui: 'shop' });
+    if (injuryCount()) list.push({
+      label: `🩹 See Mother Brisk, the healer (${injuryCount() * 10} gold)`, hint: 'Treat every lasting injury', cost: { gold: injuryCount() * 10 },
+      effects: () => { G.party.forEach(c => { while ((c.injuries || []).length) healInjury(c); }); },
+      text: P(`Mother Brisk sets bones, stitches wounds and pours something foul down your throats. "Try not to come back," she says. You will.`),
+      next: 'hub',
+    });
+    if (maxCorruption() > 0) list.push({
+      label: '🕯️ Pray at the Keepers\' chapel (15 gold)', hint: 'Cleanse 2 Corruption from every hero', cost: { gold: 15 },
+      effects: () => cleanseAll(2),
+      text: s => P(`The old chapel is cold and smells of beeswax. You kneel before the carving of the woodcutter and his axe. For a while the grey in you quiets.`, maxCorruption() >= 5 && `It does not leave entirely. Some stains go deeper than prayer.`),
+      next: 'hub',
+    });
     list.push({
       label: '🛏️ Rest at the Copper Kettle inn (8 gold)', hint: 'Fully restore HP and Focus', cost: { gold: 8 },
       effects: () => { healAll('full'); },

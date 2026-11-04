@@ -139,10 +139,14 @@ SCENES.mines_forge = {
     hasItem('rune_key') && `High on the wall, you see an old iron sluice-gate marked with the same runes as your key. Water from the mountain's heart, held back for a century.`
   ),
   choices: s => [
+    hollowOption('Call the Hollow-chains to tighten — and choke the Brute',
+      s => P(`${mostCorrupt().name} reaches out and the grey iron on the Brute answers like a dog answering its master. The chains cinch tight. The Brute's fire gutters, sputters, and goes out, leaving a cooling husk. The cultists stare at you — then flee, shrieking that you are one of the Chosen.`, hasAlly('miners') && `The miners do not cheer. They look at you the way they looked at the cultists.`),
+      'mines_vault', 1, () => { flag('mines_fought'); if (hasAlly('miners')) flag('miners_afraid'); }),
     {
       label: 'Attack!',
       combat: {
         intro: s => hasAlly('miners') ? 'The miners roar and charge with you.' : 'The Brute turns from the vault with a hiss of steam.',
+        actions: s => battleActions('crucible', 'sluice'),
         enemies: s => { const l = [foe('cinder_brute')]; for (let i = 0; i < minesForgeCount(); i++) l.push(minion()); return l; },
         allyStrikes: s => hasAlly('miners') ? [{ name: 'The miners', verb: 'swing their picks at', dmg: '1d8+2' }] : [],
         win: { effects: () => flag('mines_fought'), text: P(`The Cinder Brute crumbles into cooling slag. The last cultist flees into the deep roads, or dies trying. The forge is yours.`), next: 'mines_vault' },
@@ -185,6 +189,7 @@ SCENES.mines_forge_mop = {
   choices: s => [{
     label: 'Finish them',
     combat: {
+      actions: s => battleActions('crucible'),
       enemies: s => { const l = []; for (let i = 0; i < Math.max(1, minesForgeCount()); i++) l.push(minion()); return l; },
       allyStrikes: s => hasAlly('miners') ? [{ name: 'The miners', verb: 'swing their picks at', dmg: '1d8+2' }] : [],
       win: { effects: () => flag('mines_fought'), text: P(`The forge is silent but for dripping water. It's yours.`), next: 'mines_vault' },
@@ -200,6 +205,7 @@ SCENES.mines_forge_fight = {
   choices: s => [{
     label: 'Fight!',
     combat: {
+      actions: s => battleActions('crucible', 'sluice'),
       enemies: s => { const l = [foe('cinder_brute')]; for (let i = 0; i < minesForgeCount(); i++) l.push(minion()); return l; },
       allyStrikes: s => hasAlly('miners') ? [{ name: 'The miners', verb: 'swing their picks at', dmg: '1d8+2' }] : [],
       win: { effects: () => flag('mines_fought'), text: P(`The Cinder Brute collapses into slag. The forge is yours.`), next: 'mines_vault' },
@@ -240,6 +246,7 @@ SCENES.mines_end = {
   text: s => {
     if (hasAlly('miners')) return P(
       `When you climb out into the daylight, the whole town is waiting. Wives, husbands, children and grandparents fall on the miners with shouts and sobs. Brannoc embraces each of his people in turn${has('miners_some_died') ? ', and stands for a long time over the four who came up on stretchers' : ''}.`,
+      has('miners_afraid') && `The miners give you a wide berth. They saw what you did to the Brute.`,
       `Then he turns to you. "Emberdeep owes you a debt," he says, pressing a heavy purse and two healing draughts into your hands. "When you march on ${V().short}, send word. The clans will come."`
     );
     return P(

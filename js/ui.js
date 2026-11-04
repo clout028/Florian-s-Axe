@@ -72,6 +72,8 @@ const UI = {
         <div class="bar hp"><div style="width:${hpPct}%"></div><span>HP ${Math.max(0, c.hp)} / ${max}</span></div>
         <div class="pips">${Array.from({ length: fmax }, (_, k) => `<i class="${k < c.focus ? 'on' : ''}"></i>`).join('')}<small>Focus</small></div>
         <div class="bar xp"><div style="width:${xpPct}%"></div></div>
+        ${c.corruption ? `<div class="corr" title="Corruption: the Hollow's hold on ${esc(c.name)}">${Array.from({ length: 10 }, (_, k) => `<i class="${k < c.corruption ? 'on' : ''}"></i>`).join('')}<small>Corruption</small></div>` : ''}
+        ${(c.injuries || []).length ? `<div class="inj">${c.injuries.map(k => `<span title="${INJURIES[k].desc}">🩹 ${INJURIES[k].name}</span>`).join('')}</div>` : ''}
         <div class="pc-stats"><span>AC ${Character.ac(c)}</span><span>ATK ${signed(Character.attackBonus(c))}</span><span>${Character.weapon(c).name}</span></div>`;
       const btn = el('button', { class: 'btn small', onclick: () => UI.openSheet(i) }, c.skillPoints > 0 ? 'Sheet ★' : 'Sheet');
       card.appendChild(btn);
@@ -99,8 +101,8 @@ const UI = {
     $('#story').classList.toggle('ending', !!ending);
     $('#story').dataset.ending = ending || '';
     choices.forEach(ch => {
-      const b = el('button', { class: 'choice' + (ch.locked ? ' locked' : '') + (ch.check ? ' has-check' : '') + (ch.combat ? ' has-combat' : ''), disabled: ch.locked ? 'disabled' : undefined });
-      const icon = ch.combat ? '⚔️' : ch.check ? '🎲' : ch.ui === 'shop' ? '' : '➤';
+      const b = el('button', { class: 'choice' + (ch.locked ? ' locked' : '') + (ch.check ? ' has-check' : '') + (ch.combat ? ' has-combat' : '') + (ch.hollow ? ' hollow-choice' : ''), disabled: ch.locked ? 'disabled' : undefined });
+      const icon = ch.hollow ? '🌫️' : ch.combat ? '⚔️' : ch.check ? '🎲' : ch.ui === 'shop' ? '' : '➤';
       b.innerHTML = `<span class="c-label">${icon ? `<span class="c-icon">${icon}</span>` : ''}${ch.label}</span>${ch.hint || ch.lockReason ? `<span class="c-hint">${ch.locked ? '🔒 ' : ''}${ch.lockReason || ch.hint}</span>` : ''}`;
       b.addEventListener('click', () => UI.onChoice(ch));
       box.appendChild(b);
@@ -133,6 +135,8 @@ const UI = {
     let chosen = info.options.slice().sort((a, b) => b.total - a.total)[0];
     const who = el('div', { class: 'who' });
     const focusWrap = el('label', { class: 'focus-opt' });
+    const helpWrap = el('div', { class: 'help-opt' });
+    let helper = null;
     const renderWho = () => {
       who.innerHTML = info.options.length > 1 ? '<div class="muted">Who attempts it?</div>' : '';
       info.options.forEach(o => {
@@ -142,7 +146,16 @@ const UI = {
       });
       const die = chosen.char.cls === 'bard' ? '1d6' : '1d4';
       focusWrap.innerHTML = chosen.char.focus > 0 ? `<input type="checkbox" id="use-focus"> Spend 1 Focus for +${die} <small>(${chosen.char.focus} left)</small>` : `<span class="muted">${esc(chosen.char.name)} has no Focus to spend.</span>`;
-      const need = info.dc - chosen.total;
+      const others = info.options.filter(o => o !== chosen);
+      if (helper && helper === chosen.char) helper = null;
+      helpWrap.innerHTML = '';
+      if (others.length) {
+        const h = others[0].char;
+        const hb = el('label', {}, `<input type="checkbox" ${helper ? 'checked' : ''}> ${esc(h.name)} helps (+2) <small class="muted">— shares the risk: takes 1d4 damage on a failure</small>`);
+        hb.querySelector('input').addEventListener('change', e => { helper = e.target.checked ? h : null; renderWho(); });
+        helpWrap.appendChild(hb);
+      }
+      const need = info.dc - chosen.total - (helper ? 2 : 0);
       odds.textContent = need <= 2 ? 'Odds: excellent' : need <= 8 ? 'Odds: good' : need <= 12 ? 'Odds: risky' : 'Odds: long shot';
     };
     const odds = el('div', { class: 'odds muted' });
@@ -152,13 +165,14 @@ const UI = {
       rollBtn.disabled = true;
       who.querySelectorAll('button').forEach(b => { b.disabled = true; });
       const useFocus = !!(document.getElementById('use-focus') || {}).checked;
-      const ctx = Engine.rollCheck(ch, chosen, useFocus, info.dc);
+      const ctx = Engine.rollCheck(ch, chosen, useFocus, info.dc, helper);
       UI.renderParty();
       UI.animateDie($('#d20'), ctx.roll, () => Engine.finishCheck(ch, ctx));
     });
     renderWho();
     panel.appendChild(who);
     panel.appendChild(focusWrap);
+    panel.appendChild(helpWrap);
     panel.appendChild(odds);
     panel.appendChild(dieBox);
     panel.appendChild(rollBtn);
@@ -188,16 +202,36 @@ const UI = {
     box.innerHTML = '';
     const panel = el('div', { class: 'outcome' });
     if (ctx && ctx.roll !== undefined && ctx.dc !== undefined) {
-      const res = ctx.crit ? 'Critical success!' : ctx.fumble ? 'Critical failure!' : ctx.success ? 'Success!' : 'Failure';
-      panel.appendChild(el('div', { class: 'roll-result ' + (ctx.success ? 'good' : 'bad') },
+      const res = ctx.crit ? 'Critical success!' : ctx.fumble ? 'Critical failure!' : ctx.bought === 'Hollow' ? 'Success — the Hollow\'s gift' : ctx.bought ? `Success at a cost: ${ctx.bought}` : ctx.success ? 'Success!' : 'Failure';
+      panel.appendChild(el('div', { class: 'roll-result ' + (ctx.bought === 'Hollow' ? 'hollow' : ctx.success ? 'good' : 'bad') },
         `<div class="d20 small ${ctx.roll === 20 ? 'nat20' : ctx.roll === 1 ? 'nat1' : 'landed'}"><span>${ctx.roll}</span></div>
-         <div><b>${res}</b><br><small>${esc(ctx.char.name)} rolled ${ctx.roll}${ctx.rerolled ? ' (Lucky reroll)' : ''} ${signed(ctx.total - ctx.roll - ctx.focusRoll)}${ctx.focusRoll ? ` +${ctx.focusRoll} Focus` : ''} = <b>${ctx.total}</b> vs DC ${ctx.dc}</small></div>`));
+         <div><b>${res}</b><br><small>${esc(ctx.char.name)} rolled ${ctx.roll}${ctx.rerolled ? ' (Lucky reroll)' : ''} ${signed(ctx.total - ctx.roll - ctx.focusRoll - (ctx.helpBonus || 0))}${ctx.focusRoll ? ` +${ctx.focusRoll} Focus` : ''}${ctx.helpBonus ? ` +${ctx.helpBonus} help` : ''} = <b>${ctx.total}</b> vs DC ${ctx.dc}</small></div>`));
     }
     if (text) panel.appendChild(el('div', { class: 'outcome-text fade-in' }, text));
     if (notes && notes.length) panel.appendChild(el('div', {}, UI.notesHtml(notes)));
     const btn = el('button', { class: 'btn primary' }, 'Continue ➤');
     btn.addEventListener('click', () => { btn.disabled = true; onContinue(); });
     panel.appendChild(btn);
+    box.appendChild(panel);
+  },
+
+  /* A branching moment: success-at-a-cost, the Hollow's offer, mercy… */
+  showFork({ ctx, heading, text, options, hollow, notes }) {
+    UI.renderParty();
+    const box = $('#story-choices');
+    box.innerHTML = '';
+    const panel = el('div', { class: 'outcome fork' + (hollow ? ' hollow' : '') });
+    if (ctx && ctx.roll !== undefined && ctx.dc !== undefined) {
+      panel.appendChild(el('div', { class: 'roll-result bad' }, `<div class="d20 small landed"><span>${ctx.roll}</span></div><div><b>${ctx.partial ? 'Narrow miss' : 'Failure'}</b><br><small>${esc(ctx.char.name)} rolled ${ctx.roll} ${signed(ctx.total - ctx.roll - ctx.focusRoll - (ctx.helpBonus || 0))}${ctx.focusRoll ? ` +${ctx.focusRoll} Focus` : ''}${ctx.helpBonus ? ` +${ctx.helpBonus} help` : ''} = <b>${ctx.total}</b> vs DC ${ctx.dc}</small></div>`));
+    }
+    if (notes && notes.length) panel.appendChild(el('div', {}, UI.notesHtml(notes)));
+    panel.appendChild(el('div', { class: 'fork-head' }, `<b>${heading}</b>`));
+    if (text) panel.appendChild(el('div', { class: 'outcome-text' }, P(text)));
+    options.forEach(o => {
+      const b = el('button', { class: 'choice' + (o.hollow ? ' hollow-choice' : '') }, `<span class="c-label">${o.hollow ? '<span class="c-icon">🌫️</span>' : '<span class="c-icon">➤</span>'}${o.label}</span>${o.desc ? `<span class="c-hint">${o.desc}</span>` : ''}`);
+      b.addEventListener('click', () => { box.querySelectorAll('button').forEach(x => { x.disabled = true; }); if (typeof Sound !== 'undefined') Sound.play(o.hollow ? 'hollow' : 'click'); o.run(); });
+      panel.appendChild(b);
+    });
     box.appendChild(panel);
   },
 
@@ -211,17 +245,34 @@ const UI = {
     const wasHidden = c.classList.contains('hidden');
     c.classList.remove('hidden');
     if (wasHidden && window.innerWidth < 900 && !UI.fast) c.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const heroName = id => { const h = G.party.find(p => p.id === id); return h ? esc(h.name) : 'someone'; };
     // enemies
     const en = $('#enemies');
     en.innerHTML = '';
-    const targeting = st.pending && st.pending.needs === 'enemy';
+    const p = st.pending;
+    const targetable = e => e.hp > 0 && p && (p.needs === 'enemy' || (p.needs === 'interruptible' && Combat.interruptible().includes(e)));
     st.enemies.forEach(e => {
       const pct = Math.max(0, (e.hp / e.maxHp) * 100);
-      const card = el('div', { class: 'ecard' + (e.hp <= 0 ? ' dead' : '') + (targeting && e.hp > 0 ? ' targetable' : '') + (e.boss ? ' boss' : '') });
-      card.innerHTML = `<div class="e-name">${e.boss ? '💀 ' : ''}${esc(e.name)}</div>
-        <div class="bar ehp"><div style="width:${pct}%"></div><span>${Math.max(0, e.hp)} / ${e.maxHp}</span></div>
-        <div class="e-stats">AC ${e.ac} · ATK ${signed(e.atk)}${e.hollow ? ' · <span title="Takes double radiant damage">Hollow</span>' : ''}${e.fire ? ' · Fire' : ''}${e.debuff ? ' · Rattled' : ''}</div>`;
-      if (targeting && e.hp > 0) card.addEventListener('click', () => Combat.pickTarget(e));
+      const card = el('div', { class: 'ecard' + (e.hp <= 0 ? ' dead' : '') + (targetable(e) ? ' targetable' : '') + (e.boss ? ' boss' : '') });
+      const it = e.intent;
+      let intent = '';
+      if (e.hp > 0 && it && !st.over) {
+        const map = {
+          attack: ['⚔️', `Attacks ${heroName(it.target)}`, ''],
+          heavy: ['💥', `Winding up a crushing blow on ${heroName(it.target)} (double damage)`, 'danger'],
+          burst: ['🌫️', 'Gathering the Hollow — will strike everyone', 'danger'],
+          sweep: ['🌀', 'Coiling to sweep the whole party', 'danger'],
+          heal: ['✚', 'Preparing to heal', 'danger'],
+          stunned: ['💫', 'Staggered — will lose its turn', 'calm'],
+        };
+        const m = map[it.type] || map.attack;
+        intent = `<div class="intent ${m[2]}">${m[0]} ${m[1]}</div>`;
+      }
+      const statuses = Object.keys(e.status || {}).filter(k => e.status[k] && STATUS_INFO[k]).map(k => `<span title="${STATUS_INFO[k].desc}">${STATUS_INFO[k].icon}</span>`).join('');
+      card.innerHTML = `<div class="e-name">${e.boss ? '💀 ' : ''}${esc(e.name)} ${statuses}</div>
+        <div class="bar ehp"><div style="width:${pct}%"></div><span>${e.yielded ? 'yielded' : Math.max(0, e.hp) + ' / ' + e.maxHp}</span></div>
+        <div class="e-stats">AC ${Combat.enemyAC(e)} · ATK ${signed(e.atk)}${e.hollow ? ' · <span title="Takes double radiant damage">Hollow</span>' : ''}${e.fire ? ' · Fire' : ''}</div>${intent}`;
+      if (targetable(e)) card.addEventListener('click', () => Combat.pickTarget(e));
       en.appendChild(card);
     });
     // log
@@ -232,11 +283,22 @@ const UI = {
     const act = $('#combat-actions');
     act.innerHTML = '';
     if (st.over) {
-      const msg = st.result === 'win' ? 'Victory!' : st.result === 'flee' ? 'You escaped.' : 'Defeat…';
+      const msg = st.result === 'win' ? (st.surrendered ? 'They yield!' : 'Victory!') : st.result === 'flee' ? 'You escaped.' : 'Defeat…';
       act.appendChild(el('div', { class: 'turn-label ' + (st.result === 'win' ? 'good' : 'bad') }, msg));
       const b = el('button', { class: 'btn primary' }, 'Continue ➤');
       b.addEventListener('click', () => { b.disabled = true; Combat.finish(); });
       act.appendChild(b);
+      return;
+    }
+    if (st.temptFor) {
+      const h = st.temptFor;
+      const box = el('div', { class: 'tempt' }, `<div class="turn-label">🌫️ ${esc(h.name)} is dying…</div><p>The noise of the battle fades. Everything goes grey and soft and quiet. Then a voice, like ash falling on snow: <i>"Get up. I can make you stand. I can make it stop hurting. All you have to do is let me in."</i></p>`);
+      const row = el('div', { class: 'action-row' });
+      const n = st.enemies.some(e => e.boss) ? 3 : 2;
+      row.appendChild(el('button', { class: 'btn act hollow-choice', onclick: () => Combat.answerTemptation(true) }, `🌫️ Let the Hollow in<small>Rise with half HP. +${n} Corruption.</small>`));
+      row.appendChild(el('button', { class: 'btn act', onclick: () => Combat.answerTemptation(false) }, `✋ Refuse<small>Stay down and trust your friends${solo() ? ' — or fall' : ''}.</small>`));
+      box.appendChild(row);
+      act.appendChild(box);
       return;
     }
     const hero = Combat.current();
@@ -245,35 +307,33 @@ const UI = {
       return;
     }
     act.appendChild(el('div', { class: 'turn-label' }, `Round ${st.round} — <b>${esc(hero.name)}</b>'s turn`));
-    if (st.pending) {
-      act.appendChild(el('div', { class: 'muted' }, st.pending.needs === 'enemy' ? 'Choose a target above.' : 'Choose an ally:'));
-      if (st.pending.needs === 'ally') {
-        G.party.forEach(p => act.appendChild(el('button', { class: 'btn', onclick: () => Combat.pickTarget(p) }, `${esc(p.name)} (${Math.max(0, p.hp)} HP)`)));
-      }
+    if (p) {
+      act.appendChild(el('div', { class: 'muted' }, p.needs === 'ally' ? 'Choose an ally:' : p.needs === 'interruptible' ? 'Choose the enemy to interrupt (highlighted above).' : 'Choose a target above.'));
+      if (p.needs === 'ally') G.party.forEach(x => act.appendChild(el('button', { class: 'btn', onclick: () => Combat.pickTarget(x) }, `${esc(x.name)} (${Math.max(0, x.hp)} HP)`)));
       act.appendChild(el('button', { class: 'btn ghost', onclick: () => Combat.cancelTarget() }, 'Cancel'));
       return;
     }
     const row = el('div', { class: 'action-row' });
     const w = Character.weapon(hero);
     row.appendChild(el('button', { class: 'btn act', onclick: () => Combat.act('attack') }, `⚔️ Attack<small>${w.name} ${w.dmg}${signed(Character.damageBonus(hero))}</small>`));
+    if (Combat.interruptible().length) row.appendChild(el('button', { class: 'btn act interrupt', onclick: () => Combat.act('interrupt') }, `✋ Interrupt<small>Attack at −2 for half damage. A hit breaks a wind-up.</small>`));
     Character.fx(hero).abilities.forEach(id => {
       const ab = ABILITIES[id];
       const ok = hero.focus >= ab.cost;
-      row.appendChild(el('button', { class: 'btn act ability', disabled: ok ? undefined : 'disabled', title: ab.desc, onclick: () => Combat.act('ability', id) },
-        `✨ ${ab.name}<small>${ab.cost ? ab.cost + ' Focus' : 'Free'} · ${ab.desc}</small>`));
+      row.appendChild(el('button', { class: 'btn act ability' + (ab.corrupting ? ' hollow-choice' : ''), disabled: ok ? undefined : 'disabled', title: ab.desc, onclick: () => Combat.act('ability', id) },
+        `${ab.corrupting ? '🌫️' : '✨'} ${ab.name}<small>${ab.cost ? ab.cost + ' Focus' : 'Free'} · ${ab.desc}</small>`));
+    });
+    st.actions.filter(a => !a.used && (!a.req || a.req(hero))).forEach(a => {
+      row.appendChild(el('button', { class: 'btn act scene', onclick: () => Combat.act('scene', a.key) }, `🌟 ${a.label}<small>${a.skill ? `${SKILLS[a.skill] ? SKILLS[a.skill].name : STAT_NAMES[a.skill]} ${signed(Character.checkBonus(hero, a.skill).total)} vs DC ${a.dc} · ` : ''}${a.desc}</small>`));
     });
     Object.keys(G.pack).filter(k => G.pack[k] > 0).forEach(k => {
       row.appendChild(el('button', { class: 'btn act item', onclick: () => Combat.act('item', k) }, `🧪 ${ITEMS[k].name} ×${G.pack[k]}<small>${ITEMS[k].desc || ''}</small>`));
     });
-    row.appendChild(el('button', { class: 'btn act', onclick: () => Combat.act('defend') }, `🛡️ Defend<small>+2 AC until your next turn</small>`));
+    row.appendChild(el('button', { class: 'btn act', onclick: () => Combat.act('defend') }, `🛡️ Defend<small>+3 AC until your next turn</small>`));
     if (st.fleeable) row.appendChild(el('button', { class: 'btn act flee', onclick: () => Combat.act('flee') }, `🏃 Flee<small>Acrobatics vs DC ${st.fleeDC}</small>`));
     act.appendChild(row);
-    if (lastRoll && !UI.fast) {
-      const d = el('div', { class: 'd20 small landed float' }, `<span>${lastRoll}</span>`);
-      act.prepend(d);
-    }
+    if (lastRoll && !UI.fast) act.prepend(el('div', { class: 'd20 small landed float' }, `<span>${lastRoll}</span>`));
   },
-
   hideCombat() { $('#combat').classList.add('hidden'); $('#story').classList.remove('hidden'); },
 
   /* ---------------- Modals ---------------- */
@@ -307,6 +367,8 @@ const UI = {
         <h2>${race.icon}${cls.icon} ${esc(c.name)}</h2>
         <div class="muted">Level ${c.level} ${race.name} ${cls.name} · XP ${c.xp}${c.level < MAX_LEVEL ? ' / ' + XP_TABLE[c.level] : ''}</div>
         <p class="trait"><b>${race.name}:</b> ${race.trait}</p>
+        ${c.corruption ? `<p class="trait hollow-text"><b>Corruption ${c.corruption}/10.</b> ${c.corruption >= 7 ? 'The Hollow calls them heir. Their reflection is grey.' : c.corruption >= 5 ? 'Their eyes have begun to grey (−1 Wisdom & Charisma checks).' : c.corruption >= 3 ? 'Grey veins under the skin. Grey Fire answers their call.' : 'A chill that never quite leaves.'}</p>` : ''}
+        ${(c.injuries || []).length ? `<p class="trait"><b>Injuries:</b> ${c.injuries.map(k => `${INJURIES[k].name} (${INJURIES[k].desc})`).join('; ')}. <span class="muted">Treat them at the Hearthmoor healer.</span></p>` : ''}
         <div class="stat-row">${STATS.map(s => `<div class="stat"><small>${s.toUpperCase()}</small><b>${c.stats[s]}</b><span>${signed(mod(c.stats[s]))}</span></div>`).join('')}</div>
         <div class="derived">
           <span>❤️ HP ${c.hp}/${Character.maxHp(c)}</span><span>🛡️ AC ${Character.ac(c)}</span>
@@ -441,7 +503,9 @@ const UI = {
     UI.modal(`<div class="journal"><h2>How to Play</h2>
       <p>Florian's Axe is a choose-your-own-adventure for 1 or 2 players. Each tale is different: the villain, the opening, which three lands hide the axe's fragments, and the encounters on the road are all chosen at random — and your choices decide the rest.</p>
       <h3>Choices & checks</h3><p>Choices marked 🎲 need a <b>skill check</b>: roll a d20 and add the character's stat modifier, proficiency, talents and gear. Meet or beat the DC to succeed. A natural 20 always succeeds; a natural 1 always fails. In a 2-player game, pick who attempts each check. You can spend 1 Focus to add +1d4 (Bards +1d6).</p>
-      <h3>Battles</h3><p>Choices marked ⚔️ start a battle. Each hero takes a turn — attack, use an ability (costs Focus), drink a potion, defend or flee — then the enemies strike. Losing a battle usually doesn't end the game, but it changes the story: a fragment may be lost, an ally may die, the Hollow may spread. Only the final battle is to the death.</p>
+      <h3>Narrow misses</h3><p>Miss a check by 3 or less and you can <b>succeed at a cost</b> — take a wound, lose time (Doom), gold or Focus — or accept the failure. In 2-player games, the other hero can <b>help</b> for +2, but shares the risk.</p>
+      <h3>Battles</h3><p>Choices marked ⚔️ start a battle. Every enemy shows its <b>intent</b> for the round — watch for 💥 crushing blows and 🌫️ Hollow bursts. <b>Defend</b> (+3 AC) against them, or <b>Interrupt</b> to break the wind-up. Each battlefield offers 🌟 <b>scene actions</b> — drop the chandelier, ring the bell. Critical hits stun, bleed or expose foes. Beaten enemies may surrender: spare, question or execute them. Losing usually doesn't end the game — it changes the story, and may leave lasting <b>injuries</b> (treat them at the healer). Only the final battle is to the death.</p>
+      <h3>The Hollow</h3><p>When you fail or fall, the Hollow may offer help. Accepting works — and adds <b>Corruption</b>. At 3 you can call Grey Fire and take dark shortcuts in the story; at 5 your eyes grey; at 7 the Hollow calls you its heir. Corruption changes how people see you, how the axe treats you, and how the tale can end. Pray at the chapel to cleanse it.</p>
       <h3>Growing stronger</h3><p>Earn XP from checks and battles. Each level grants more HP and a skill point to spend in your class's <b>skill tree</b> (open the character Sheet). Buy gear in Hearthmoor and equip it from the Sheet.</p>
       <h3>What matters</h3><p>Recover all three fragments to reforge the axe before the end. Allies you help will come to your aid. Learn the villain's secrets — with enough of them, you may end the war with words instead of steel. Watch the <b>Doom</b> meter: the Hollow spreads with time and failure.</p>
       <p class="muted">The game autosaves after every scene.</p></div>`);
@@ -464,6 +528,12 @@ const UI = {
       [1, 2].forEach(n => row.appendChild(el('button', { class: 'big-card', onclick: () => { cr.count = n; UI.newDraft(); UI.renderCreation(); } },
         `<div class="big-icon">${n === 1 ? '🧍' : '🧍🧍'}</div><b>${n === 1 ? 'Solo' : 'Two Players'}</b><small>${n === 1 ? 'One hero, one tale.' : 'Hot-seat: share one screen and take turns.'}</small>`)));
       root.appendChild(row);
+      root.appendChild(el('h3', {}, 'Difficulty'));
+      const drow = el('div', { class: 'count-row' });
+      cr.difficulty = cr.difficulty || 'normal';
+      Object.keys(DIFFICULTIES).forEach(k => drow.appendChild(el('button', { class: 'pick' + (cr.difficulty === k ? ' sel' : ''), onclick: () => { cr.difficulty = k; UI.renderCreation(); } },
+        `<b>${k === 'hardcore' ? '☠️ ' : k === 'story' ? '📖 ' : '⚔️ '}${DIFFICULTIES[k].name}</b><small>${DIFFICULTIES[k].desc}</small>`)));
+      root.appendChild(drow);
       return;
     }
     const d = cr.draft;
@@ -516,7 +586,7 @@ const UI = {
       if (!d.name.trim()) d.name = UI.randomName();
       cr.chars.push(Character.create(d.name.trim(), d.race, d.cls, d.array));
       if (cr.chars.length < cr.count) { cr.idx++; UI.newDraft(); UI.renderCreation(); }
-      else { Engine.newGame(cr.chars); }
+      else { Engine.newGame(cr.chars, { difficulty: cr.difficulty || 'normal' }); }
     } }, cr.chars.length + 1 < cr.count ? 'Next hero →' : 'Begin the tale ⚔️'));
     root.appendChild(nav);
   },

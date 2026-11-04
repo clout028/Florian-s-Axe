@@ -1,5 +1,5 @@
 /* Headless playtest bot: plays many random games to find crashes,
-   dead ends and balance problems.  Usage: node tools/simulate.js [games] [players] */
+   dead ends and balance problems.  Usage: node tools/simulate.js [games] [players 0|1|2] [story|normal|hardcore] */
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const root = path.join(__dirname, '..');
 const files = ['data.js', 'character.js', 'engine.js', 'combat.js', 'story/hub.js', 'story/prologue.js', 'story/mire.js', 'story/mines.js',
@@ -7,11 +7,12 @@ const files = ['data.js', 'character.js', 'engine.js', 'combat.js', 'story/hub.j
 
 const N = parseInt(process.argv[2] || '300', 10);
 const PLAYERS = parseInt(process.argv[3] || '0', 10); // 0 = mixed
+const DIFF = process.argv[4] || 'normal';
 
 const ctx = { console, Math, JSON, Date, setTimeout, localStorage: { getItem: () => null, setItem() {}, removeItem() {} } };
 vm.createContext(ctx);
 const stub = `
-const Q = []; const ENC = {};
+const Q = []; const ENC = {}; const STATS_F = { forks: 0 }; let BOT_HOLLOW = 0.3;
 let SIM = { ending: null, scenes: 0, errors: [], combats: 0, combatLoss: 0, path: [], seen: {} };
 const UI = {
   fast: true,
@@ -43,6 +44,13 @@ const UI = {
   showCheck(ch, info) {
     const best = info.options.slice().sort((a, b) => b.total - a.total)[0];
     Q.push(() => { const c = Engine.rollCheck(ch, best, Math.random() < 0.3, info.dc); Engine.finishCheck(ch, c); });
+  },
+  showFork(f) {
+    STATS_F.forks++;
+    const opts = f.options; let pick;
+    const hollow = opts.filter(o => o.hollow), clean = opts.filter(o => !o.hollow);
+    pick = (hollow.length && Math.random() < BOT_HOLLOW) ? hollow[0] : clean[Math.floor(Math.random() * clean.length)];
+    Q.push(() => pick.run());
   },
   showOutcome(o) {
     if (o.text && /undefined|NaN|\\[object/.test(o.text)) SIM.errors.push('bad outcome text at ' + G.scene + ': ' + o.text.match(/.{0,40}(undefined|NaN|\\[object).{0,20}/)[0]);
@@ -80,10 +88,15 @@ function botShop() {
 }
 function botCombat() {
   const st = Combat.st; if (!st || st.over || st.busy) return;
+  if (st.temptFor) { Combat.answerTemptation(Math.random() < BOT_HOLLOW + 0.2); return; }
   const h = Combat.current(); if (!h) return;
+  if (st.pending && st.pending.needs === 'interruptible') { Combat.pickTarget(Combat.interruptible()[0]); return; }
   if (st.pending) { const p = st.pending; if (p.needs === 'enemy') Combat.pickTarget(Combat.livingEnemies().sort((a,b)=>a.hp-b.hp)[0]); else Combat.pickTarget(G.party.slice().sort((a,b)=>a.hp/Character.maxHp(a)-b.hp/Character.maxHp(b))[0]); return; }
   const low = G.party.find(c => c.hp > 0 ? c.hp < Character.maxHp(c) * 0.35 : true);
   if (low && G.pack.potion) { Combat.act('item', 'potion'); return; }
+  const scene = st.actions.filter(a => !a.used);
+  if (scene.length && Math.random() < 0.3) { Combat.act('scene', scene[0].key); return; }
+  if (Combat.interruptible().length && Math.random() < 0.4) { Combat.act('interrupt'); return; }
   const abs = Character.fx(h).abilities.filter(a => h.focus >= ABILITIES[a].cost && !(ABILITIES[a].kind === 'heal' && !low));
   if (abs.length && Math.random() < 0.6) { Combat.act('ability', abs[Math.floor(Math.random() * abs.length)]); return; }
   Combat.act('attack');
@@ -95,15 +108,16 @@ function runOne(nPlayers) {
   const chars = [];
   for (let i = 0; i < nPlayers; i++) chars.push(Character.create('Bot' + i, Dice.pick(races), Dice.pick(classes)));
   try {
-    Engine.newGame(chars);
+    Engine.newGame(chars, { difficulty: DIFF });
     let guard = 0;
     while (Q.length && !SIM.ending && guard++ < 200000) Q.shift()();
     if (!SIM.ending) SIM.errors.push('stalled at ' + G.scene + ' combat=' + !!Combat.st);
   } catch (e) { SIM.errors.push('EXC at ' + (G && G.scene) + ': ' + e.stack.split('\\n').slice(0, 3).join(' | ')); }
   return { ending: SIM.ending, errors: SIM.errors, villain: G && G.villain, doom: G && G.doom, frags: G && fragCount('party'), lvl: G && G.party[0].level,
-    clues: G && G.clues.length, allies: G && G.allies.length, combats: SIM.combats, losses: SIM.combatLoss, seen: SIM.seen, cls: chars.map(c=>c.cls).join('+'), np: nPlayers };
+    clues: G && G.clues.length, corr: G && maxCorruption(), inj: G && injuryCount(), allies: G && G.allies.length, combats: SIM.combats, losses: SIM.combatLoss, seen: SIM.seen, cls: chars.map(c=>c.cls).join('+'), np: nPlayers };
 }
 `;
+ctx.DIFF = DIFF;
 vm.runInContext(files.map(f => fs.readFileSync(path.join(root, 'js', f), 'utf8')).join('\n;\n') + stub, ctx);
 
 const results = [];
@@ -114,6 +128,7 @@ const endings = {};
 results.forEach(r => { endings[r.ending] = (endings[r.ending] || 0) + 1; });
 const avg = k => (results.reduce((a, r) => a + (r[k] || 0), 0) / results.length).toFixed(2);
 console.log('games', N, 'endings', endings);
+console.log('avg corruption', avg('corr'), 'injuries', avg('inj'));
 console.log('avg doom', avg('doom'), 'frags(pre-boss)', avg('frags'), 'level', avg('lvl'), 'clues', avg('clues'), 'allies', avg('allies'), 'combats', avg('combats'), 'losses', avg('losses'));
 ['1', '2'].forEach(np => { const rs = results.filter(r => String(r.np) === np); if (!rs.length) return; const w = rs.filter(r => /victory/.test(r.ending)).length; console.log(np + 'p win rate', (w / rs.length * 100).toFixed(1) + '%', 'n=' + rs.length); });
 const byCls = {}; results.filter(r => r.np === 1).forEach(r => { byCls[r.cls] = byCls[r.cls] || [0, 0]; byCls[r.cls][1]++; if (/victory/.test(r.ending)) byCls[r.cls][0]++; });

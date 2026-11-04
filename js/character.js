@@ -67,19 +67,22 @@ const Character = {
     const addSkills = (sk) => { for (const k in sk) out.skills[k] = (out.skills[k] || 0) + sk[k]; };
     out.abilities.push(cls.ability);
     if (cls.ability2) out.abilities.push(cls.ability2);
-    cls.tree.forEach(br => br.nodes.forEach(n => {
-      if (!c.tree.includes(n.id)) return;
-      const f = n.fx;
-      ['attack', 'damage', 'ac', 'hp', 'focus', 'spellAttack', 'spellDamage'].forEach(k => { if (f[k]) out[k] += f[k]; });
+    const merge = f => {
+      if (!f) return;
+      ['attack', 'damage', 'ac', 'hp', 'focus', 'spellAttack', 'spellDamage', 'checks'].forEach(k => { if (f[k]) out[k] += f[k]; });
       if (f.skills) addSkills(f.skills);
       if (f.statChecks) for (const k in f.statChecks) out.statChecks[k] = (out.statChecks[k] || 0) + f.statChecks[k];
-      if (f.ability) out.abilities.push(f.ability);
+      if (f.ability && !out.abilities.includes(f.ability)) out.abilities.push(f.ability);
       if (f.crit) out.crit = Math.min(out.crit, f.crit);
       if (f.spellDie) out.spellDie = f.spellDie;
       if (f.weaponDie) out.weaponDie = f.weaponDie;
       if (f.companion) out.companion = true;
       if (f.healBonus) out.healBonus = true;
-    }));
+    };
+    cls.tree.forEach(br => br.nodes.forEach(n => { if (c.tree.includes(n.id)) merge(n.fx); }));
+    (c.injuries || []).forEach(id => merge(INJURIES[id] && INJURIES[id].fx));
+    if (c.background && typeof BACKGROUNDS !== 'undefined' && BACKGROUNDS[c.background]) merge(BACKGROUNDS[c.background].fx);
+    if ((c.corruption || 0) >= 3) merge({ ability: 'grey_fire' });
     const race = RACES[c.race];
     addSkills(race.skills || {});
     ['weapon', 'armor', 'trinket'].forEach(slot => {
@@ -144,6 +147,10 @@ const Character = {
     if (fx.skills[skill]) parts.push({ label: 'Talents & gear', value: fx.skills[skill] });
     if (fx.statChecks[stat]) parts.push({ label: 'Talent', value: fx.statChecks[stat] });
     if (fx.checks) parts.push({ label: 'Lucky Coin', value: fx.checks });
+    let wound = 0;
+    (c.injuries || []).forEach(id => { const ch = (INJURIES[id] || {}).checks || {}; wound += (ch[skill] || 0) + (skill !== stat ? (ch[stat] || 0) : 0) + (ch.all || 0); });
+    if (wound) parts.push({ label: 'Wounds', value: wound });
+    if ((c.corruption || 0) >= 5 && (stat === 'wis' || stat === 'cha')) parts.push({ label: 'Hollow-touched', value: -1 });
     return { total: parts.reduce((a, p) => a + p.value, 0), parts };
   },
 

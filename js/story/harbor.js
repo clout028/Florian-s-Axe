@@ -108,6 +108,9 @@ SCENES.harbor_auction = {
       },
       failure: { text: (s, c) => P(`The crowd laughs at ${c.char.name}. Quill smiles thinly. "Sore losers." Vosk bangs her gavel. "Sold, to Master Quill." The fragment goes into a lacquered box under his arm, and he heads for his boat.`), next: 'harbor_chase_choice' },
     },
+    hollowOption(`Whisper fear into ${QUILL()}'s mind`,
+      s => P(`${mostCorrupt().name} catches Quill's eye across the deck and lets the grey look out of theirs. Quill goes white. His hands start to shake. "I — I withdraw my bid," he stammers, and flees the ship. With no one to match it, Vosk sells you the fragment for a song.`, `Later, you hear that Quill threw himself into the harbor that night. He kept saying the grey was watching him.`),
+      'harbor_win', 1, () => { addGold(-Math.min(G.gold, 15)); flag('quill_broken'); }),
     {
       label: 'Snatch the fragment from the cushion and run',
       check: { skill: 'acrobatics', dc: 14 },
@@ -135,6 +138,7 @@ SCENES.harbor_fight = {
   choices: s => [{
     label: 'Fight!',
     combat: {
+      actions: s => battleActions('rigging', 'barrels'),
       enemies: s => [quillFoe(), foe('thug')].concat(solo() || has('harbor_exposed') ? [] : [foe('thug')]),
       allyStrikes: s => has('harbor_exposed') ? [{ name: 'Vosk\'s sailors', verb: 'slash at', dmg: '1d8+1' }] : [],
       win: { effects: () => flag('harbor_quill_dead'), text: P(`${QUILL()} falls to the deck, his ring rolling away across the planks.`), next: 'harbor_win' },
@@ -161,6 +165,7 @@ SCENES.harbor_alley = {
   choices: s => [{
     label: 'Fight!',
     combat: {
+      actions: s => battleActions('barrels'),
       enemies: s => [foe('thug'), foe('thug')],
       win: { text: P(`The thugs lie groaning. You slip away into the night with the fragment.`), next: 'harbor_win' },
       flee: { text: P(`You break free and run, but in the struggle the fragment is torn from your grip. Behind you, a thug whoops in triumph.`), next: 'harbor_lost' },
@@ -195,6 +200,7 @@ SCENES.harbor_boat_fight = {
   choices: s => [{
     label: 'Fight!',
     combat: {
+      actions: s => battleActions('rigging'),
       enemies: s => [quillFoe(), foe('thug')],
       fleeable: false,
       win: { effects: () => flag('harbor_quill_dead'), text: P(`Quill topples into the sea. His lacquered box floats for a moment before you grab it.`), next: 'harbor_win' },
@@ -217,6 +223,7 @@ SCENES.harbor_win = {
       c && `In ${QUILL()}'s coat you find a waxed packet of letters from his master. One of them changes how you see this whole war:`,
       c && `<b>${c}</b>`,
       hasAlly('vosk') && `At dawn, Captain Vosk finds you on the quay. "You saved my ship and my neck," she says. "I don't like owing people. When you go after the one who sent Quill, send word. My crew knows every back door in the kingdom."`,
+      has('quill_broken') && `Captain Vosk watches you leave Saltcliff with narrowed eyes. Whatever you did to Quill, she wants no part of it.`,
       has('harbor_stole') && !hasAlly('vosk') && `You leave Saltcliff before Vosk can find out who robbed her. You doubt she'll be sending you any presents.`
     );
   },
