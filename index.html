@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Florian's Axe</title>
+  <meta name="description" content="A choose-your-own-adventure fantasy RPG for 1–2 players. Recover the pieces of Florian's Axe before the Hollow swallows the world.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Crimson+Pro:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Title -->
+  <section id="title-screen" class="screen">
+    <div class="title-card">
+      <div class="axe-emblem">🪓</div>
+      <h1>Florian's Axe</h1>
+      <p class="tagline">A hundred years ago, a woodcutter sealed the Hollow away.<br>The seal is breaking. The axe is in pieces. Someone must make it whole.</p>
+      <div class="title-buttons">
+        <button id="continue-btn" class="btn primary hidden">Continue your tale</button>
+        <button id="new-btn" class="btn primary">New tale</button>
+        <button id="help-btn" class="btn ghost">How to play</button>
+      </div>
+      <p class="muted small">1–2 players · Every tale is different</p>
+    </div>
+  </section>
+
+  <!-- Character creation -->
+  <section id="create-screen" class="screen hidden">
+    <div class="create-wrap"><div id="create-body"></div></div>
+  </section>
+
+  <!-- Game -->
+  <section id="game-screen" class="screen hidden">
+    <header class="topbar">
+      <div class="brand">🪓 Florian's Axe</div>
+      <div class="hud">
+        <div class="doom" title="The Hollow's Reach — rises with time and failure">
+          <span>Doom</span><div class="doom-bar"><div id="doom-fill"></div></div><b id="doom-val">0</b>
+        </div>
+        <div id="frags" class="frags"></div>
+        <div class="gold" title="Party gold">🪙 <b id="gold">0</b></div>
+      </div>
+      <div class="top-buttons">
+        <button id="journal-btn" class="btn small">📖 Journal</button>
+        <button id="game-help-btn" class="btn small ghost">?</button>
+        <button id="menu-btn" class="btn small ghost">☰</button>
+      </div>
+    </header>
+    <main class="layout">
+      <aside id="party" class="party"></aside>
+      <div class="main-col">
+        <article id="story" class="story">
+          <h2 id="story-title"></h2>
+          <div id="story-text" class="story-text"></div>
+          <div id="story-notes"></div>
+          <div id="story-choices" class="choices"></div>
+        </article>
+        <article id="combat" class="combat hidden">
+          <h2>⚔️ Battle</h2>
+          <div id="enemies" class="enemies"></div>
+          <div id="combat-actions" class="combat-actions"></div>
+          <div id="combat-log" class="combat-log"></div>
+        </article>
+      </div>
+    </main>
+  </section>
+
+  <!-- Modal -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-card">
+      <button id="modal-close" class="modal-close" aria-label="Close">✕</button>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/character.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/combat.js"></script>
+  <script src="js/story/hub.js"></script>
+  <script src="js/story/prologue.js"></script>
+  <script src="js/story/mire.js"></script>
+  <script src="js/story/mines.js"></script>
+  <script src="js/story/harbor.js"></script>
+  <script src="js/story/barrow.js"></script>
+  <script src="js/story/peak.js"></script>
+  <script src="js/story/interludes.js"></script>
+  <script src="js/story/finale.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
