@@ -6,8 +6,14 @@
 
 const SETTINGS_KEY = 'florians-axe-settings-v1';
 const Settings = {
-  data: { sfx: true, music: false, pacing: true },
-  load() { try { Object.assign(Settings.data, JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}')); } catch (e) { /* ignore */ } },
+  data: { sfx: true, music: true, musicVol: 0.7, pacing: true, voice: undefined, voiceName: 'auto', voiceRate: 0.95, musicV: 2 },
+  load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+      if (saved.musicV !== 2) { delete saved.music; }   // the old drone was off by default; the new score is on
+      Object.assign(Settings.data, saved);
+    } catch (e) { /* ignore */ }
+  },
   save() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(Settings.data)); } catch (e) { /* ignore */ } },
 };
 Settings.load();
@@ -69,30 +75,11 @@ const Sound = {
     }
   },
 
-  /* Ambient drone: two detuned oscillators through a slow filter sweep. */
-  AMBIENT: {
-    town: [196, 294], village: [174, 261], tavern: [164, 246], road: [220, 330], mire: [110, 164], mines: [98, 147], harbor: [196, 293],
-    barrow: [123, 185], peak: [233, 349], orchard: [261, 392], court: [247, 370], wych: [82, 123], fortress: [73, 110], camp: [147, 220],
-    dawn: [261, 392], grey: [65, 98],
-  },
+  /* Scene music is handled by the Music score (js/music.js). */
   ambient(key) {
-    if (!Settings.data.music || UI.fast) { Sound.stopAmbient(); return; }
-    if (key === Sound.ambKey && Sound.amb) return;
-    if (!Sound.ensure()) return;
-    Sound.stopAmbient();
-    const c = Sound.ctx, [f1, f2] = Sound.AMBIENT[key] || Sound.AMBIENT.road;
-    const g = c.createGain(); g.gain.setValueAtTime(0.0001, c.currentTime); g.gain.exponentialRampToValueAtTime(0.06, c.currentTime + 2);
-    const filt = c.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = 600;
-    const lfo = c.createOscillator(), lfoG = c.createGain(); lfo.frequency.value = 0.07; lfoG.gain.value = 300; lfo.connect(lfoG); lfoG.connect(filt.frequency);
-    const oscs = [f1, f1 * 1.005, f2].map((f, i) => { const o = c.createOscillator(); o.type = i === 2 ? 'sine' : 'triangle'; o.frequency.value = f; o.connect(filt); o.start(); return o; });
-    filt.connect(g); g.connect(Sound.master); lfo.start();
-    Sound.amb = { g, oscs, lfo }; Sound.ambKey = key;
+    if (typeof Music === 'undefined') return;
+    if (UI.fast) return;
+    Music.play(key);
   },
-  stopAmbient() {
-    if (!Sound.amb) return;
-    const { g, oscs, lfo } = Sound.amb, c = Sound.ctx;
-    g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + 1);
-    setTimeout(() => { oscs.forEach(o => o.stop()); lfo.stop(); }, 1100);
-    Sound.amb = null; Sound.ambKey = null;
-  },
+  stopAmbient() { if (typeof Music !== 'undefined') Music.stop(); },
 };

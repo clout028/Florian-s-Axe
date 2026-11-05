@@ -81,8 +81,13 @@ SCENES.hub_main = {
     const list = remaining.map(r => ({
       label: `Travel to ${REGIONS[r].name}`, icon: r,
       hint: REGIONS[r].blurb,
-      effects: () => { doom(1); G.flags.currentRegion = r; },
-      text: s => P(`You set out for ${REGIONS[r].name}. The road takes days, and every day, the grey creeps a little further.`),
+      effects: () => {
+        const free = hasPerk('trailblazer') && ((G.flags.trail_n = (G.flags.trail_n || 0) + 1) % 2 === 0);
+        if (free) note('Trailblazer: you find the quick way — no Doom this journey', 'good'); else doom(1);
+        G.flags.currentRegion = r;
+        if (hasPerk('sage') && !has('sage_' + r)) { flag('sage_' + r); G._sage = addClue(); }
+      },
+      text: s => { const sg = G._sage; G._sage = null; return P(`You set out for ${REGIONS[r].name}. The road takes days, and every day, the grey creeps a little further.`, sg && `Over the long miles ${perkHolder('sage').name} turns the old stories over in their head, and something clicks. <b>${sg}</b>`); },
       next: () => travelTo(r),
     }));
     list.push({ label: 'Visit the market', hint: 'Buy weapons, armor and supplies', ui: 'shop' });
@@ -101,7 +106,7 @@ SCENES.hub_main = {
     });
     list.push({
       label: 'Rest at the Copper Kettle inn (8 gold)', hint: 'Fully restore HP and Focus', cost: { gold: 8 },
-      effects: () => { healAll('full'); },
+      effects: () => { healAll('full'); if (hasPerk('miracle_worker')) G.party.forEach(c => { if ((c.injuries || []).length) healInjury(c); }); },
       text: P(`A hot meal, a real bed, and a night without watches. You wake feeling whole.`),
       next: 'hub',
     });

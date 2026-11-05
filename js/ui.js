@@ -122,6 +122,7 @@ const UI = {
 
   /* ---------------- Story ---------------- */
   renderScene({ id, title, text, choices, notes, ending, vote }) {
+    if (typeof Voice !== 'undefined') Voice.cancel();
     UI.show('#game-screen');
     document.body.classList.add('in-game');
     UI.renderParty();
@@ -210,12 +211,31 @@ const UI = {
     return '';
   },
 
-  /* Storyteller pacing: paragraphs arrive one by one; click to skip. */
+  /* Storyteller pacing: paragraphs arrive one by one; click to skip.
+     With narration on, each paragraph appears as the voice begins it. */
   pace(body, box) {
     clearTimeout(UI._paceT);
+    UI._narTok = (UI._narTok || 0) + 1;
+    const tok = UI._narTok;
     const ps = [...body.querySelectorAll(':scope > p, :scope > div')];
     const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (UI.fast || reduce || typeof Settings === 'undefined' || !Settings.data.pacing || ps.length < 2) return;
+    if (UI.fast) return;
+    const reveal = !reduce && typeof Settings !== 'undefined' && Settings.data.pacing && ps.length >= 2;
+    if (typeof Voice !== 'undefined' && Voice.enabled() && ps.length) {
+      if (reveal) { ps.forEach(p => p.classList.add('unread')); box.classList.add('waiting'); }
+      let i = 0;
+      const done = () => { ps.forEach(p => p.classList.remove('unread')); box.classList.remove('waiting'); body.onclick = null; };
+      const step = () => {
+        if (UI._narTok !== tok) return;
+        if (i >= ps.length) { done(); return; }
+        const p = ps[i++];
+        Voice.speak(p.innerHTML, { onstart: () => p.classList.remove('unread'), onend: () => step() });
+      };
+      body.onclick = () => { UI._narTok++; Voice.cancel(); done(); };
+      step();
+      return;
+    }
+    if (reduce || !reveal) return;
     ps.forEach(p => p.classList.add('unread'));
     box.classList.add('waiting');
     let i = 0;
@@ -289,15 +309,43 @@ const UI = {
     const wrap = el('div', { class: 'journal' });
     const render = () => {
       wrap.innerHTML = `<h2>${Icon('gear')} Settings</h2>`;
-      [['sfx', 'Sound effects', 'Dice, blows, chimes — all synthesized in your browser.'], ['music', 'Ambient music', 'A quiet drone that changes with the place you\'re in.'], ['pacing', 'Storyteller pacing', 'Story paragraphs arrive one at a time. Click the text to skip ahead.']].forEach(([k, label, desc]) => {
+      [['sfx', 'Sound effects', 'Dice, blows, chimes — all synthesized in your browser.'], ['music', 'Soundtrack', 'An original score for every place, plus battle, boss and victory themes.'], ['pacing', 'Storyteller pacing', 'Story paragraphs arrive one at a time. Click the text to skip ahead.']].forEach(([k, label, desc]) => {
         const row = el('label', { class: 'setting' }, `<input type="checkbox" ${Settings.data[k] ? 'checked' : ''}> <span><b>${label}</b><small>${desc}</small></span>`);
         row.querySelector('input').addEventListener('change', e => {
           Settings.data[k] = e.target.checked; Settings.save();
-          if (k === 'music') { if (e.target.checked && G) Sound.ambient(Art.keyFor(G.scene)); else Sound.stopAmbient(); }
+          if (k === 'music') { if (e.target.checked && G) Sound.ambient(Art.keyFor(G.scene)); else if (e.target.checked) Sound.ambient('title'); else Sound.stopAmbient(); }
           if (k === 'sfx' && e.target.checked) Sound.play('success');
         });
         wrap.appendChild(row);
       });
+      const vol = el('label', { class: 'setting slider' }, `<span><b>Music volume</b></span><input type="range" min="0" max="1" step="0.05" value="${Settings.data.musicVol}">`);
+      vol.querySelector('input').addEventListener('input', e => { Settings.data.musicVol = parseFloat(e.target.value); Settings.save(); if (typeof Music !== 'undefined') Music.applyVolume(); });
+      wrap.appendChild(vol);
+      // ---- narration
+      const nar = el('div', { class: 'ai-settings' });
+      nar.innerHTML = '<h3>Narration <small class="muted">(read aloud)</small></h3>';
+      if (!Voice.ok) {
+        nar.appendChild(el('p', { class: 'muted small' }, 'This browser has no built-in speech voices, so narration is unavailable.'));
+      } else {
+        const best = Voice.best();
+        const on = el('label', { class: 'setting' }, `<input type="checkbox" ${Settings.data.voice ? 'checked' : ''}> <span><b>Read the story aloud</b><small>Uses your device's own voices, on-device. ${best ? 'Best voice found: <b>' + esc(best.name) + '</b>.' : 'Loading voices…'}</small></span>`);
+        on.querySelector('input').addEventListener('change', e => { Settings.data.voice = e.target.checked; Settings.save(); Voice.unlock(); UI.syncVoiceButton(); if (e.target.checked) Voice.preview(); else Voice.cancel(); });
+        nar.appendChild(on);
+        const sel = el('select', { class: 'ai-key' });
+        sel.appendChild(el('option', { value: 'auto' }, `Best available${best ? ' — ' + esc(best.name) : ''}`));
+        Voice.ranked().forEach(v => {
+          const q = /premium/i.test(v.name + v.voiceURI) ? ' · Premium' : /enhanced/i.test(v.name + v.voiceURI) ? ' · Enhanced' : /siri/i.test(v.name + v.voiceURI) ? ' · Siri' : '';
+          sel.appendChild(el('option', { value: v.voiceURI, selected: Settings.data.voiceName === v.voiceURI ? 'selected' : undefined }, `${esc(v.name)} (${esc(v.lang)})${q}`));
+        });
+        sel.addEventListener('change', () => { Settings.data.voiceName = sel.value; Settings.save(); Voice.preview(); });
+        nar.appendChild(el('label', { class: 'small' }, 'Voice')); nar.appendChild(sel);
+        const rate = el('label', { class: 'setting slider' }, `<span><b>Speaking speed</b></span><input type="range" min="0.7" max="1.2" step="0.05" value="${Settings.data.voiceRate}">`);
+        rate.querySelector('input').addEventListener('change', e => { Settings.data.voiceRate = parseFloat(e.target.value); Settings.save(); Voice.preview(); });
+        nar.appendChild(rate);
+        nar.appendChild(el('button', { class: 'btn small', onclick: () => { Voice.unlock(); Voice.preview(); } }, 'Hear a sample'));
+        nar.appendChild(el('p', { class: 'muted small' }, 'On iPhone or iPad, for the best sound: Settings → Accessibility → Spoken Content → Voices → English, then download an Enhanced or Premium voice (Daniel, Serena or Ava are lovely for a storyteller). Reopen this list afterwards and it will be picked automatically.'));
+      }
+      wrap.appendChild(nar);
       const ai = el('div', { class: 'ai-settings' });
       ai.innerHTML = `<h3>AI Game Master <small class="muted">(optional)</small></h3>
         <p class="muted small">Adds a "Do something else…" option to scenes: type any action and Claude (${AI_MODEL}) decides which skill it needs and how hard it is, and narrates the result. It needs your own Anthropic API key, which is stored only in this browser and sent only to api.anthropic.com. Each attempt is a small paid API call on your account. Anyone using this browser can use the key — don't enable it on a shared computer.</p>`;
@@ -311,6 +359,23 @@ const UI = {
     };
     render();
     UI.modal(wrap);
+  },
+
+  /* The speaker button in the top bar */
+  syncVoiceButton() {
+    const b = $('#voice-btn'); if (!b) return;
+    const on = Voice.ok && Settings.data.voice;
+    b.innerHTML = Icon(on ? 'speaker' : 'speaker_off');
+    b.classList.toggle('on', !!on);
+    b.title = on ? 'Narration on (tap to mute)' : 'Narration off (tap to read the story aloud)';
+    b.hidden = !Voice.ok;
+  },
+  toggleVoice() {
+    if (!Voice.ok) return;
+    Settings.data.voice = !Settings.data.voice; Settings.save(); Voice.unlock();
+    UI.syncVoiceButton();
+    if (!Settings.data.voice) { Voice.cancel(); return; }
+    if (G && UI._scene) { const body = $('#story-text'); if (body && !$('#story').classList.contains('hidden')) UI.pace(body, $('#story-choices')); }
   },
 
   scrollStoryTop() {
@@ -409,6 +474,9 @@ const UI = {
     const panel = el('div', { class: 'outcome' });
     if (ctx && ctx.roll !== undefined && ctx.dc !== undefined && typeof Sound !== 'undefined') Sound.play(ctx.crit ? 'crit' : ctx.bought === 'Hollow' ? 'hollow' : ctx.success ? 'success' : 'fail');
     if (notes && notes.some(n => n.kind === 'level') && typeof Sound !== 'undefined') setTimeout(() => Sound.play('level'), 400);
+    if (ctx && ctx.perk) {
+      panel.appendChild(el('div', { class: 'roll-result good' }, `<span class="perk-badge">${Icon('star')}</span><div><b>${esc(ctx.perk)}</b><br><small>${esc(ctx.char.name)} handles it without rolling (DC ${ctx.dc}).</small></div>`));
+    }
     if (ctx && ctx.roll !== undefined && ctx.dc !== undefined) {
       const res = ctx.crit ? 'Critical success!' : ctx.fumble ? 'Critical failure!' : ctx.bought === 'Hollow' ? 'Success — the Hollow\'s gift' : ctx.bought ? `Success at a cost: ${ctx.bought}` : ctx.success ? 'Success!' : 'Failure';
       panel.appendChild(el('div', { class: 'roll-result ' + (ctx.bought === 'Hollow' ? 'hollow' : ctx.success ? 'good' : 'bad') },
@@ -418,7 +486,11 @@ const UI = {
     if (text) panel.appendChild(el('div', { class: 'outcome-text fade-in' }, text));
     if (notes && notes.length) panel.appendChild(el('div', {}, UI.notesHtml(notes)));
     const btn = el('button', { class: 'btn primary' }, `Continue ${Icon('next')}`);
-    btn.addEventListener('click', () => { btn.disabled = true; onContinue(); });
+    if (text && typeof Voice !== 'undefined' && !UI.fast) { Voice.cancel(); Voice.speak(text); }
+    btn.addEventListener('click', () => { btn.disabled = true; if (typeof Voice !== 'undefined') Voice.cancel(); onContinue(); });
+    G.party.forEach((hero, hi) => {
+      if (hero.skillPoints > 0 && notes && notes.some(n => n.kind === 'level')) panel.appendChild(el('button', { class: 'btn small level-up', onclick: () => UI.openSheet(hi) }, `${Icon('star')} ${esc(hero.name)}: spend ${hero.skillPoints} skill point${hero.skillPoints === 1 ? '' : 's'}`));
+    });
     panel.appendChild(btn);
     box.appendChild(panel);
   },
@@ -610,6 +682,7 @@ const UI = {
         <div class="tree" id="tree"></div>
         <h3>Abilities</h3>
         <div class="abilities">${fx.abilities.map(a => `<div><b>${ABILITIES[a].name}</b> <small>(${ABILITIES[a].cost ? ABILITIES[a].cost + ' Focus' : 'free'})</small> — ${ABILITIES[a].desc}</div>`).join('')}${fx.companion ? '<div><b>Wolf Companion</b> — bites a foe every round.</div>' : ''}</div>
+        <h3>Masteries <small class="muted">(what you can do)</small></h3><div class="abilities" id="perk-list"></div>
         <h3>Skills</h3><div class="skills">${skills}</div>
         <div id="pack-use"></div>`;
       // equipment
@@ -634,19 +707,38 @@ const UI = {
       });
       // tree
       const tree = wrap.querySelector('#tree');
-      cls.tree.forEach(br => {
-        const col = el('div', { class: 'branch' }, `<h4>${br.name}</h4>`);
+      const drawBranch = (br) => {
+        const col = el('div', { class: 'branch' + (br.wayfarer ? ' wayfarer' : '') }, `<h4>${br.name}</h4>`);
         br.nodes.forEach((n, idx) => {
           const owned = c.tree.includes(n.id);
-          const can = Character.canLearn(c, n.id);
-          const node = el('div', { class: 'node' + (owned ? ' owned' : can ? ' can' : ' locked') }, `<b>${n.name}</b><small>${n.desc}</small>`);
-          if (can && !Combat.st) node.appendChild(el('button', { class: 'btn small primary', onclick: () => { Character.learn(c, n.id); Engine.save(); render(); UI.renderParty(); } }, 'Learn'));
+          const block = owned ? '' : Character.learnBlock(c, n.id);
+          const can = !owned && block === '';
+          const hasPerkFx = n.fx && n.fx.perks && n.fx.perks.length;
+          const node = el('div', { class: 'node' + (owned ? ' owned' : can ? ' can' : ' locked') + (hasPerkFx ? ' perk' : '') },
+            `<b>${n.name}${hasPerkFx ? ` <span class="perk-tag" title="Unlocks something new you can do in the story">${Icon('star')}</span>` : ''}</b><small>${n.desc}</small>${!owned && (n.lvl || 1) > 1 ? `<span class="lvl-tag">Lv ${n.lvl}</span>` : ''}`);
+          if (can && !Combat.st) node.appendChild(el('button', { class: 'btn small primary', onclick: () => { Character.learn(c, n.id); Sound.play('level'); Engine.save(); render(); UI.renderParty(); } }, 'Learn'));
+          else if (!owned && block && block !== 'No skill points') node.appendChild(el('em', { class: 'block' }, block));
           col.appendChild(node);
           if (idx < br.nodes.length - 1) col.appendChild(el('div', { class: 'tree-link' }, '│'));
         });
-        tree.appendChild(col);
-      });
+        return col;
+      };
+      const classRow = el('div', { class: 'tree-row' });
+      cls.tree.forEach(br => classRow.appendChild(drawBranch(br)));
+      tree.appendChild(classRow);
+      tree.appendChild(el('h4', { class: 'tree-sub' }, `Wayfarer disciplines <small class="muted">— open to everyone; these let you do new things in the story</small>`));
+      const wayRow = el('div', { class: 'tree-row ways' });
+      WAYFARER.forEach(br => wayRow.appendChild(drawBranch(br)));
+      tree.appendChild(wayRow);
       if (Combat.st && c.skillPoints) tree.appendChild(el('div', { class: 'muted' }, 'Skill points can be spent outside of battle.'));
+      if (!Combat.st && c.tree.length) {
+        const cost = Character.respecCost(c);
+        tree.appendChild(el('button', { class: 'btn small ghost', disabled: G.gold < cost ? 'disabled' : undefined, onclick: () => { if (G.gold < cost) return; G.gold -= cost; Character.respec(c); Engine.save(); render(); UI.renderParty(); } }, `Unlearn everything and choose again (${cost} gold)`));
+      }
+      // perks summary
+      const perkList = wrap.querySelector('#perk-list');
+      const pk = fx.perks.filter(id => PERKS[id]);
+      perkList.innerHTML = pk.length ? pk.map(id => { const p = PERKS[id]; return p.skills ? `<div><b>${p.name}</b> — win ${p.skills.map(k => SKILLS[k].name).join(', ')} checks up to DC ${p.dc} without rolling <small>(1 Focus; appears as an extra option)</small></div>` : `<div><b>${p.name}</b> — shopkeepers charge 15% less</div>`; }).join('') : '<div class="muted">None yet — look for the starred nodes in the tree below.</div>';
       // potions outside combat
       const pu = wrap.querySelector('#pack-use');
       if (!Combat.st) {
@@ -679,7 +771,7 @@ const UI = {
     return p.join(' · ');
   },
 
-  price(it) { return Math.round(it.price * (has('market_burned') ? 1.5 : 1) * (has('hearth_defended') ? 0.8 : 1)); },
+  price(it) { return Math.round(it.price * (has('market_burned') ? 1.5 : 1) * (has('hearth_defended') ? 0.8 : 1) * (hasPerk('haggler') ? 0.85 : 1)); },
 
   openShop() {
     const wrap = el('div', { class: 'shop' });

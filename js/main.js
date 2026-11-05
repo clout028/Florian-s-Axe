@@ -8,7 +8,14 @@ document.addEventListener('DOMContentLoaded', () => {
   $('#map-btn').addEventListener('click', () => UI.openMap());
   $('#settings-btn').addEventListener('click', () => UI.openSettings());
   $('#title-settings-btn').addEventListener('click', () => UI.openSettings());
-  document.addEventListener('click', () => { if (typeof Sound !== 'undefined' && Sound.ctx && Sound.ctx.state === 'suspended') Sound.ctx.resume(); }, { once: true });
+  document.addEventListener('click', () => {
+    if (typeof Sound !== 'undefined' && Sound.ctx && Sound.ctx.state === 'suspended') Sound.ctx.resume();
+    if (typeof Voice !== 'undefined') Voice.unlock();
+    // Music may have been requested before the first tap (browsers keep audio locked until then)
+    if (typeof Music !== 'undefined' && Settings.data.music && !Music.key && !Music.battling) Music.play(Music.base || 'title');
+  }, { once: true });
+  $('#voice-btn').addEventListener('click', () => UI.toggleVoice());
+  UI.syncVoiceButton();
   $('#journal-btn').addEventListener('click', () => UI.openJournal());
   $('#game-help-btn').addEventListener('click', () => UI.openHelp());
   $('#menu-btn').addEventListener('click', () => {

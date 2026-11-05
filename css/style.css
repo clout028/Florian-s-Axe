@@ -552,3 +552,28 @@ input[type="checkbox"] { accent-color: var(--gold); width: 18px; height: 18px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001s !important; animation-iteration-count: 1 !important; transition-duration: .001s !important; }
 }
+
+/* ---- narration & music controls ---- */
+.setting.slider { cursor: default; align-items: center; justify-content: space-between; }
+.setting.slider input[type=range] { flex: 1; max-width: 220px; accent-color: var(--gold, #f0c96a); }
+.icon-btn.on { color: var(--gold, #f0c96a); }
+.icon-btn[hidden] { display: none; }
+select.ai-key { width: 100%; padding: 10px; border-radius: 10px; background: rgba(255,255,255,.06); color: inherit; border: 1px solid var(--line); margin: 4px 0 10px; }
+
+/* ---- skill tree ---- */
+.tree { display: block; }
+.tree-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.tree-row.ways { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.tree-sub { margin: 16px 0 8px; font-family: 'Cinzel', serif; letter-spacing: .04em; }
+.tree .branch { min-width: 0; }
+.tree .node { position: relative; }
+.tree .node.perk { border-color: rgba(240, 201, 106, .45); }
+.perk-tag { display: inline-flex; width: 14px; height: 14px; vertical-align: -2px; color: #f0c96a; }
+.perk-tag svg, .perk-badge svg { width: 100%; height: 100%; }
+.perk-badge { width: 34px; height: 34px; color: #f0c96a; display: inline-flex; flex: none; }
+.lvl-tag { position: absolute; top: 6px; right: 8px; font-size: .7rem; color: var(--muted); opacity: .8; }
+.tree .block { display: block; margin-top: 4px; font-size: .78rem; color: var(--muted); }
+.btn.level-up { margin: 6px 8px 6px 0; border-color: #f0c96a; color: #f0c96a; }
+.btn.level-up svg { width: 14px; height: 14px; vertical-align: -2px; }
+@media (max-width: 700px) { .tree-row.ways { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 460px) { .tree-row, .tree-row.ways { grid-template-columns: 1fr; } }

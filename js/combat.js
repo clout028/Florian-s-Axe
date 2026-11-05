@@ -48,6 +48,7 @@ const Combat = {
     if (opts.intro) Combat.log(opts.intro, 'intro');
     Combat.planIntents();
     Combat.advanceTo(0);
+    if (typeof Music !== 'undefined') Music.battle(opts.enemies.some(e => e.boss || e.lieutenant));
     UI.renderCombat();
   },
 
@@ -261,6 +262,7 @@ const Combat = {
     dmg = Math.max(1, dmg);
     const dealt = Combat.damageEnemy(target, dmg, hero, ab.radiant);
     if (ab.debuff) target.status.rattled = 1;
+    if (ab.status && target.hp > 0) Object.assign(target.status, ab.status);
     if (ab.element === 'fire' && !target.fire && target.hp > 0 && Dice.chance(0.3)) target.status.burning = 2;
     const rollTxt = roll === null ? '' : `🎲${roll} ${signed(bonus)} = ${roll + bonus} — `;
     Combat.log(`${hero.name}'s ${ab.name} strikes ${target.name}: ${rollTxt}${crit ? '<b>CRITICAL!</b> ' : ''}<b>${dealt}</b> damage${ab.debuff ? ' (and rattles it)' : ''}${target.status.burning === 2 ? ' — it catches fire' : ''}.${Combat.fell(target)}`, crit ? 'crit' : ab.corrupting ? 'hollow' : 'hit');
@@ -285,8 +287,9 @@ const Combat = {
     if (ab.kind === 'weapon') {
       const targets = ab.target === 'allEnemies' ? Combat.livingEnemies() : [target];
       targets.forEach(t => {
-        const r = Combat.weaponAttack(hero, t, { extraDie: ab.extraDie, toHit: ab.toHit, advantage: ab.advantage, autoHit: ab.autoHit, radiant: ab.radiant, label: `uses ${ab.name} on` });
+        const r = Combat.weaponAttack(hero, t, { extraDie: ab.extraDie, toHit: ab.toHit, advantage: ab.advantage, autoHit: ab.autoHit, radiant: ab.radiant, half: ab.half, label: `uses ${ab.name} on` });
         if (roll === null) roll = r.roll;
+        if (ab.status && r.hit && t.hp > 0) { Object.assign(t.status, ab.status); Combat.log(`${t.name} is ${Object.keys(ab.status).map(k => (STATUS_INFO[k] || { name: k }).name.toLowerCase()).join(' and ')}.`, 'hit'); }
       });
     } else if (ab.kind === 'spell') {
       const targets = ab.target === 'allEnemies' ? Combat.livingEnemies() : [target];
@@ -383,7 +386,7 @@ const Combat = {
     const st = Combat.st;
     const b = Character.checkBonus(hero, 'acrobatics').total;
     const roll = Combat.rollD20(hero);
-    const ok = roll === 20 || (roll !== 1 && roll + b >= st.fleeDC);
+    const ok = roll === 20 || (roll !== 1 && roll + b >= st.fleeDC) || (typeof hasPerk === 'function' && hasPerk('shadow_walker'));
     Combat.log(`${hero.name} tries to break away: 🎲${roll} ${signed(b)} = ${roll + b} vs DC ${st.fleeDC} — ${ok ? 'the party escapes!' : 'cut off!'}`, ok ? 'intro' : 'miss');
     if (ok) st.fled = true;
     return roll;
@@ -403,6 +406,7 @@ const Combat = {
     st.result = result;
     if (result === 'win') Combat.log(st.surrendered ? 'The fight is over.' : 'Victory!', 'crit');
     if (result === 'lose') Combat.log('The last of you falls…', 'miss');
+    if (typeof Music !== 'undefined') Music.endBattle(result);
     UI.renderCombat();
     return true;
   },

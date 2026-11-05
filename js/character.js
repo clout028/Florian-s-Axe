@@ -62,7 +62,7 @@ const Character = {
   /* Aggregate all passive effects from skill tree + equipment */
   fx(c) {
     const out = { attack: 0, damage: 0, ac: 0, hp: 0, focus: 0, skills: {}, statChecks: {}, checks: 0,
-      spellAttack: 0, spellDamage: 0, spellDie: null, weaponDie: null, crit: 20, abilities: [], companion: false, healBonus: false };
+      spellAttack: 0, spellDamage: 0, spellDie: null, weaponDie: null, crit: 20, abilities: [], companion: false, healBonus: false, perks: [] };
     const cls = CLASSES[c.cls];
     const addSkills = (sk) => { for (const k in sk) out.skills[k] = (out.skills[k] || 0) + sk[k]; };
     out.abilities.push(cls.ability);
@@ -78,8 +78,9 @@ const Character = {
       if (f.weaponDie) out.weaponDie = f.weaponDie;
       if (f.companion) out.companion = true;
       if (f.healBonus) out.healBonus = true;
+      if (f.perks) f.perks.forEach(k => { if (!out.perks.includes(k)) out.perks.push(k); });
     };
-    cls.tree.forEach(br => br.nodes.forEach(n => { if (c.tree.includes(n.id)) merge(n.fx); }));
+    Character.branches(c).forEach(br => br.nodes.forEach(n => { if (c.tree.includes(n.id)) merge(n.fx); }));
     (c.injuries || []).forEach(id => merge(INJURIES[id] && INJURIES[id].fx));
     if (c.background && typeof BACKGROUNDS !== 'undefined' && BACKGROUNDS[c.background]) merge(BACKGROUNDS[c.background].fx);
     if ((c.corruption || 0) >= 3) merge({ ability: 'grey_fire' });
@@ -154,15 +155,24 @@ const Character = {
     return { total: parts.reduce((a, p) => a + p.value, 0), parts };
   },
 
-  canLearn(c, nodeId) {
-    if (c.skillPoints <= 0 || c.tree.includes(nodeId)) return false;
-    for (const br of CLASSES[c.cls].tree) {
+  /* Every branch this hero can walk: their class's two, plus the Wayfarer disciplines. */
+  branches(c) { return CLASSES[c.cls].tree.concat(typeof WAYFARER !== 'undefined' ? WAYFARER : []); },
+
+  /* Why a node can't be learned yet, or '' if it can. */
+  learnBlock(c, nodeId) {
+    if (c.tree.includes(nodeId)) return 'Learned';
+    for (const br of Character.branches(c)) {
       const i = br.nodes.findIndex(n => n.id === nodeId);
       if (i === -1) continue;
-      return i === 0 || c.tree.includes(br.nodes[i - 1].id);
+      const n = br.nodes[i];
+      if (i > 0 && !c.tree.includes(br.nodes[i - 1].id)) return `Needs ${br.nodes[i - 1].name}`;
+      if ((n.lvl || 1) > c.level) return `Level ${n.lvl}`;
+      if (c.skillPoints <= 0) return 'No skill points';
+      return '';
     }
-    return false;
+    return 'Unknown';
   },
+  canLearn(c, nodeId) { return Character.learnBlock(c, nodeId) === ''; },
 
   learn(c, nodeId) {
     if (!Character.canLearn(c, nodeId)) return false;
@@ -173,6 +183,15 @@ const Character = {
     c.focus += Character.maxFocus(c) - oldFocus;
     return true;
   },
+
+  /* Refund every skill point so the hero can choose again. */
+  respec(c) {
+    c.skillPoints += c.tree.length;
+    c.tree = [];
+    c.hp = Math.max(1, Math.min(c.hp, Character.maxHp(c)));
+    c.focus = Math.min(c.focus, Character.maxFocus(c));
+  },
+  respecCost(c) { return c.tree.length ? 10 * c.level : 0; },
 
   /* Add xp, returns number of levels gained */
   addXp(c, amount) {

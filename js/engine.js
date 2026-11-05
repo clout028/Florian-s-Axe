@@ -292,13 +292,27 @@ const Engine = {
       }
       if (ch.combat && !out.hint) out.hint = 'Battle';
       return out;
-    }).filter(Boolean);
+    }).filter(Boolean).reduce((acc, ch) => {
+      acc.push(ch);
+      // Masteries from the skill tree: win the check outright for 1 Focus
+      if (ch.check && !ch.locked && !ch.noBypass && !ch.hollow && typeof masteryOptions === 'function') {
+        const dc = typeof ch.check.dc === 'function' ? ch.check.dc(G) : ch.check.dc;
+        const opt = masteryOptions(ch.check.skill, dc)[0];
+        if (opt) {
+          const plain = String(ch.label).replace(/^\s*\[[^\]]+\]\s*/, '');
+          acc.push({ label: `<b>[${PERKS[opt.perk].name}]</b> ${plain}`, icon: 'star', perkBypass: { char: opt.char, perk: opt.perk, orig: ch },
+            hint: `${opt.char.name} succeeds without rolling · 1 Focus` });
+        }
+      }
+      return acc;
+    }, []);
   },
 
   choose(ch) {
     if (ch.locked) return;
     if (ch.once) flag('once_' + ch.once);
     G._notes = [];
+    if (ch.perkBypass) { if (ch.perkBypass.orig.once) flag('once_' + ch.perkBypass.orig.once); if (ch.perkBypass.orig.cost && ch.perkBypass.orig.cost.gold) addGold(-ch.perkBypass.orig.cost.gold); Engine.usePerk(ch); return; }
     if (ch.cost && ch.cost.gold) addGold(-ch.cost.gold);
     if (ch.puzzle) { Puzzles.start(ch); return; }
     if (ch.check) { UI.showCheck(ch, Engine.checkOptions(ch)); return; }
@@ -435,6 +449,7 @@ const Engine = {
           Engine.deathSaves();
           G.party.forEach(c => { if (c.hp <= 0) c.hp = 1; });
           giveXp(xp);
+          if (typeof hasPerk === 'function' && hasPerk('field_medic')) { const n = Dice.roll('1d6').total; G.party.forEach(c => { if (c.hp > 0) Character.heal(c, n); }); note(`Field Medic: the party recovers ${n} HP`, 'good'); }
           if (cctx.surrendered) { Engine.surrenderFork(def, cctx); return; }
           Engine.resolve(def.win, cctx);
         } else if (result === 'flee') {

@@ -110,7 +110,7 @@ const AI = {
   },
 
   /* Options a free-text action may stand in for: plain choices and skill checks (not battles, shops or paid choices). */
-  mappable(choices) { return choices.filter(c => !c.locked && !c.combat && !c.ui && !c.cost && !c.hollow); },
+  mappable(choices) { return choices.filter(c => !c.locked && !c.combat && !c.ui && !c.cost && !c.hollow && !c.perkBypass); },
 
   /* Turn the model's ruling into a normal check choice the engine already knows how to run. */
   buildChoice(action, ruling, mappable) {
