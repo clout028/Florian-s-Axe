@@ -433,7 +433,7 @@ const Combat = {
         const n = p.summon;
         for (let i = 0; i < n; i++) {
           const m = minion();
-          m.status = {}; m.phase = 1; m.intent = { type: 'attack', target: Dice.pick(Combat.livingHeroes() || G.party).id };
+          m.status = {}; m.phase = 1; m.intent = { type: 'attack', target: Dice.pick(Combat.livingHeroes().length ? Combat.livingHeroes() : G.party).id };
           st.enemies.push(m);
         }
         Combat.log(`${n === 1 ? 'A' : n} ${V().minion}${n === 1 ? '' : 's'} answer${n === 1 ? 's' : ''} the call!`, 'ehit');

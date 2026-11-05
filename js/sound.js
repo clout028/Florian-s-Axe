@@ -26,6 +26,8 @@ const Sound = {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return null;
     Sound.ctx = new AC();
+    // iOS: treat game audio as media (plays even with the ringer switch on silent)
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { /* unsupported */ }
     Sound.master = Sound.ctx.createGain();
     Sound.master.gain.value = 0.5;
     Sound.master.connect(Sound.ctx.destination);

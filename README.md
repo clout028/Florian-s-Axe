@@ -41,6 +41,17 @@ Consequences carry forward: fragments you fail to recover make the villain stron
 - **Presentation**: full-screen painted landscapes for every place (layered depth, fog, glowing light, animated embers, snow, fireflies and rain) that lose their colour as the Hollow spreads; frosted-glass story pages; a custom icon set; hero crests with ring gauges; enemy portraits with HP rings and damage numbers; a night-sky journey map; synthesized sound and ambient drones; paced narration.
 - **Optional AI game master**: type your own action; Claude picks the skill and difficulty, narrates the result, and maps it onto the story so it stays coherent. Bring your own Anthropic API key (Settings ⚙️); it is stored only in your browser.
 
+## New in this version
+
+- **Narration with iOS voices**: the story can be read aloud using your device's own speech voices. On iPhone and iPad it prefers the best installed voice (Siri, Premium, then Enhanced, then well-known Apple voices such as Daniel, Serena and Ava). Paragraphs appear as they are spoken, quoted speech is voiced slightly differently, and the music dips under the voice. Turn it on with the speaker button in the top bar, or in Settings (where you can pick a voice, speed, and hear a sample). On iOS, download an Enhanced or Premium voice in *Settings → Accessibility → Spoken Content → Voices*.
+- **A real soundtrack**: an original score, synthesized live in the browser (no audio files). Every place has its own theme: key, mode, tempo, chord progression and a written melody played by harp, lute, flute, horn, strings, choir, bells and drums through a hall reverb. Themes build over a four-pass cycle so a long scene never loops flatly. Battles switch to a tense battle cue, boss and lieutenant fights get a boss theme, and a battle ends with a victory swell (or a slow defeat toll) before the scene theme returns. Volume is adjustable in Settings.
+- **A skill tree that changes what you can do**: every class has two five-step branches (new abilities and tougher stats), and every hero can also walk the **Wayfarer disciplines** (Diplomat, Scout, Scholar, Burglar, Brawn, Healer). There are far more nodes than skill points, so every hero ends up different. Starred nodes grant **Masteries**: when a check falls within a perk's reach, an extra option appears to win it outright for 1 Focus. Others are knacks: market discounts, healing after battles, free secrets when you set out, always being able to slip away. You can unlearn and choose again for gold.
+- **A travelling companion** (Bran, Lirael, Pip or Brother Aldous): fights beside you, comments on places, and *approves or disapproves* of your choices (each has things they love and hate). Approval unlocks fireside conversations and stronger help in battle, and decides whether they give everything for you at the end — or turn on you at the gates.
+- **Explorable regions**: from the start of each region you can explore four spots in any order, including a hidden one and a dangerous one, for supplies, materials, gear, standing and local knowledge that makes later checks easier. Every second detour costs a point of Doom.
+- **Factions and reputation**: the Keepers, the Emberdeep dwarves, the Saltcliff smugglers, the Silverbough elves and the Order of the Hearth. Standing changes check bonuses, prices, who offers help in Hearthmoor, and the epilogue.
+- **Better loot**: five rarities (common to relic), named gear with backstories, three item sets with two- and three-piece bonuses, crafting materials dropped by foes, and a smithy that tempers weapons and armour. Rarity and sets show on your hero's crest.
+- **The Hearthmoor quest board**: up to three jobs after each journey, chosen to fit what has happened so far — an ally's request, refugees after a raid, your companion's errand, a merchant who senses your corruption.
+
 ## Code layout
 
 ```
@@ -54,10 +65,20 @@ js/ui.js           all rendering
 js/meta.js         Keeper's Archive: run history, achievements, unlocks, legacy encounters
 js/art.js          procedural full-screen SVG landscapes and the journey map
 js/icons.js        line-icon set, hero crests and enemy portraits
-js/sound.js        synthesized sound effects and ambience, settings
+js/sound.js        synthesized sound effects, settings
+js/music.js        the generative soundtrack: themes, instruments, battle cues, stingers
+js/voice.js        narration through on-device speech voices (prefers iOS system voices)
+js/perks.js        class tree extensions, Wayfarer disciplines and Masteries
+js/loot.js         rarities, relics, sets, materials and crafting
 js/puzzles.js      puzzle generation and logic; js/puzzle-ui.js renders them
 js/ai.js           optional AI game master (Anthropic SDK, loaded from a CDN)
 js/story/*.js      prologue, hub, eight regions, interludes, villain moves, personal quests, finale
+js/story/companion.js  companions, approval, barks and fireside talks, sacrifice and betrayal
+js/story/factions.js   reputation and what it unlocks
+js/story/explore.js   explorable region spots
+js/story/board.js     the quest board
+js/story/mini.js      a compact format for authoring side scenes
+tools/test-systems.js  focused checks for perks, companion, factions, loot, exploration and the board
 tools/simulate.js  headless playtest bot: `node tools/simulate.js 500` plays 500 random games,
                    reporting crashes, dead ends, unvisited scenes and win rates per encounter
 ```
