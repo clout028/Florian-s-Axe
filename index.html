@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Florian's Axe</title>
+  <meta name="description" content="A choose-your-own-adventure fantasy RPG for 1–2 players. Recover the pieces of Florian's Axe before the Hollow swallows the world.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Cinzel:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Full-screen painted backdrop; scenes crossfade here -->
+  <div id="backdrop" aria-hidden="true"><div class="bd-shade"></div></div>
+
+  <!-- Title -->
+  <section id="title-screen" class="screen">
+    <div class="title-card">
+      <div class="emblem" aria-hidden="true">
+        <svg viewBox="0 0 120 120">
+          <defs>
+            <linearGradient id="emb-gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff1c2"/><stop offset=".5" stop-color="#f0c96a"/><stop offset="1" stop-color="#b9822a"/></linearGradient>
+            <radialGradient id="emb-glow"><stop offset="0" stop-color="#ffd27a" stop-opacity=".55"/><stop offset="1" stop-color="#ffd27a" stop-opacity="0"/></radialGradient>
+          </defs>
+          <circle cx="60" cy="60" r="58" fill="url(#emb-glow)"/>
+          <circle cx="60" cy="60" r="44" fill="none" stroke="url(#emb-gold)" stroke-width="1.5" opacity=".7"/>
+          <circle cx="60" cy="60" r="38" fill="none" stroke="url(#emb-gold)" stroke-width=".8" opacity=".5" stroke-dasharray="2 4"/>
+          <path d="M42 92 L76 34" stroke="url(#emb-gold)" stroke-width="6" stroke-linecap="round"/>
+          <path d="M70 26 C 86 24 98 34 100 48 C 90 44 80 46 74 52 C 74 42 72 34 64 30 Z" fill="url(#emb-gold)"/>
+          <path d="M64 30 C 60 38 62 44 66 46" stroke="#7a4a12" stroke-width="1.2" fill="none" opacity=".6"/>
+          <circle cx="42" cy="92" r="5" fill="#5fd4c4"/>
+          <circle cx="42" cy="92" r="9" fill="none" stroke="#5fd4c4" stroke-opacity=".5"/>
+        </svg>
+      </div>
+      <h1>Florian's Axe</h1>
+      <div class="ornament" aria-hidden="true"><span></span><i></i><span></span></div>
+      <p class="tagline">A hundred years ago, a woodcutter sealed the Hollow away.<br>The seal is breaking. The axe is in pieces. Someone must make it whole.</p>
+      <nav class="title-buttons">
+        <button id="continue-btn" class="btn primary big hidden">Continue your tale</button>
+        <button id="new-btn" class="btn primary big">Begin a new tale</button>
+        <div class="title-links">
+          <button id="archive-btn" class="link-btn"><i data-icon="scroll"></i> Keeper's Archive</button>
+          <button id="help-btn" class="link-btn"><i data-icon="book"></i> How to play</button>
+          <button id="title-settings-btn" class="link-btn"><i data-icon="gear"></i> Settings</button>
+        </div>
+      </nav>
+      <p class="title-foot">1–2 players · every tale is different</p>
+    </div>
+  </section>
+
+  <!-- Character creation -->
+  <section id="create-screen" class="screen hidden">
+    <div class="create-wrap glass"><div id="create-body"></div></div>
+  </section>
+
+  <!-- Game -->
+  <section id="game-screen" class="screen hidden">
+    <header class="topbar">
+      <div class="brand"><i data-icon="axe"></i><span>Florian's Axe</span></div>
+      <div class="hud">
+        <div class="doom" title="The Hollow's reach — rises with time and failure">
+          <i data-icon="doom"></i><div class="doom-track" id="doom-track"></div>
+        </div>
+        <div id="frags" class="frags"></div>
+        <div class="gold" title="Party gold"><i data-icon="coin"></i><b id="gold">0</b></div>
+      </div>
+      <div class="top-buttons">
+        <button id="map-btn" class="icon-btn" title="Map" aria-label="Map"><i data-icon="map"></i></button>
+        <button id="journal-btn" class="icon-btn" title="Journal" aria-label="Journal"><i data-icon="book"></i></button>
+        <button id="settings-btn" class="icon-btn" title="Settings" aria-label="Settings"><i data-icon="gear"></i></button>
+        <button id="game-help-btn" class="icon-btn" title="How to play" aria-label="How to play"><i data-icon="help"></i></button>
+        <button id="menu-btn" class="icon-btn" title="Title screen" aria-label="Title screen"><i data-icon="menu"></i></button>
+      </div>
+    </header>
+    <main class="layout">
+      <aside id="party" class="party"></aside>
+      <div class="main-col">
+        <article id="story" class="story">
+          <header class="scene-head">
+            <div class="scene-kicker" id="story-kicker"></div>
+            <h2 id="story-title"></h2>
+          </header>
+          <div class="glass page">
+            <div id="story-text" class="story-text"></div>
+            <div id="story-notes"></div>
+            <div id="story-choices" class="choices"></div>
+          </div>
+        </article>
+        <article id="combat" class="combat hidden">
+          <header class="scene-head"><div class="scene-kicker">Battle</div><h2 id="combat-title">Steel is drawn</h2></header>
+          <div id="enemies" class="enemies"></div>
+          <div class="glass page combat-page">
+            <div id="combat-actions" class="combat-actions"></div>
+            <div id="combat-log" class="combat-log"></div>
+          </div>
+        </article>
+      </div>
+    </main>
+  </section>
+
+  <!-- Modal -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-card glass">
+      <button id="modal-close" class="modal-close" aria-label="Close"><i data-icon="close"></i></button>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/character.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/combat.js"></script>
+  <script src="js/icons.js"></script>
+  <script src="js/meta.js"></script>
+  <script src="js/puzzles.js"></script>
+  <script src="js/art.js"></script>
+  <script src="js/sound.js"></script>
+  <script src="js/story/hub.js"></script>
+  <script src="js/story/prologue.js"></script>
+  <script src="js/story/mire.js"></script>
+  <script src="js/story/mines.js"></script>
+  <script src="js/story/harbor.js"></script>
+  <script src="js/story/barrow.js"></script>
+  <script src="js/story/peak.js"></script>
+  <script src="js/story/orchard.js"></script>
+  <script src="js/story/court.js"></script>
+  <script src="js/story/wych.js"></script>
+  <script src="js/story/interludes.js"></script>
+  <script src="js/story/villain.js"></script>
+  <script src="js/story/personal.js"></script>
+  <script src="js/story/finale.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/puzzle-ui.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
