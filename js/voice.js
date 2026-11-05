@@ -76,7 +76,7 @@ const Voice = {
   unlock() {
     if (!Voice.ok || Voice.unlocked) return;
     Voice.unlocked = true;
-    try { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); } catch (e) { /* ignore */ }
+    try { const u = new SpeechSynthesisUtterance('.'); u.volume = 0; speechSynthesis.speak(u); } catch (e) { /* ignore */ }
   },
 
   /* Turn story HTML into spoken chunks. Quoted speech is flagged so it can sound different. */
