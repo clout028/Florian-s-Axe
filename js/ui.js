@@ -118,6 +118,12 @@ const UI = {
       UI._hhp[c.id] = c.hp;
       box.appendChild(card);
     });
+    if (typeof compHere === 'function' && compHere()) {
+      const co = compData(), ap = compAppr();
+      const cc = el('button', { class: 'pcard comp', title: `${co.name} — ${compTitle(ap)}`, onclick: () => UI.openCompanion() });
+      cc.innerHTML = `<div class="medal comp-medal" style="--m:52px"><div class="comp-icon">${Icon(co.icon)}</div></div><div class="pc-name"><b>${esc(co.short)}</b><small>${compTitle(ap)}</small></div><div class="pc-stats appr" title="Approval ${ap}">${Array.from({ length: 5 }, (_, k) => `<i class="${ap >= (k + 1) * 2 - 1 ? 'on' : ap <= -(k + 1) * 2 + 1 ? 'neg' : ''}"></i>`).join('')}</div>`;
+      box.appendChild(cc);
+    }
   },
 
   /* ---------------- Story ---------------- */
@@ -184,6 +190,7 @@ const UI = {
     if (ch.check) return 'dice';
     if (ch.ui === 'ai') return 'quill';
     if (ch.ui === 'shop') return 'shop';
+    if (ch.ui === 'smith') return 'heavy';
     if (ch.ui === 'newgame') return 'axe';
     const l = String(ch.label);
     if (/Travel to/.test(l)) { const r = Object.keys(REGIONS).find(k => l.includes(REGIONS[k].name)); return r || 'compass'; }
@@ -386,6 +393,7 @@ const UI = {
   onChoice(ch) {
     if (typeof Sound !== 'undefined') Sound.play(ch.hollow ? 'hollow' : 'click');
     if (ch.ui === 'shop') { if (ch.once) flag('once_' + ch.once); UI.openShop(); return; }
+    if (ch.ui === 'smith') { UI.openSmith(); return; }
     if (ch.ui === 'newgame') { Engine.clearSave(); UI.startCreation(); return; }
     if (ch.ui === 'ai') { UI.showAiInput(); return; }
     Engine.choose(ch);
@@ -678,6 +686,7 @@ const UI = {
           <span>${Icon('focus')} Focus ${c.focus}/${Character.maxFocus(c)}</span>${cls.spellStat ? `<span>${Icon('ability')} Spell attack ${signed(Character.spellAttack(c))}</span>` : ''}
         </div>
         <h3>Equipment</h3><div id="equip"></div>
+        ${typeof Loot !== 'undefined' && Loot.activeSets(c).length ? Loot.activeSets(c).map(s => `<p class="set-active"><b>${s.set.name} (${s.n}/3):</b> ${s.set.b2.desc}${s.n >= 3 ? ' · ' + s.set.b3.desc : ''}</p>`).join('') : ''}
         <h3>Skill Tree <span class="sp">${c.skillPoints} point${c.skillPoints === 1 ? '' : 's'} to spend</span></h3>
         <div class="tree" id="tree"></div>
         <h3>Abilities</h3>
@@ -689,10 +698,10 @@ const UI = {
       const eq = wrap.querySelector('#equip');
       ['weapon', 'armor', 'trinket'].forEach(slot => {
         const cur = ITEMS[c.equip[slot]];
-        const row = el('div', { class: 'eq-row' }, `<span class="slot">${slot}</span><b>${cur ? cur.name : '—'}</b>${cur ? `<small>${UI.itemDesc(cur)}</small>` : ''}`);
+        const row = el('div', { class: 'eq-row' }, `<span class="slot">${slot}</span><b class="r-${cur ? (cur.rarity || 'common') : 'common'}">${cur ? cur.name : '—'}${cur && c.temper && ((slot === 'weapon' && (c.temper.weapon || c.temper.fire)) || (slot === 'armor' && c.temper.armor)) ? ` <span class="temper">${slot === 'weapon' ? '+' + ((c.temper.weapon || 0) + (c.temper.fire || 0)) : '+' + c.temper.armor}</span>` : ''}</b>${cur ? `<small>${UI.itemDesc(cur)}</small>` : ''}`);
         const options = G.stash.filter(id => ITEMS[id].slot === slot);
         options.forEach(id => {
-          row.appendChild(el('button', { class: 'btn small', onclick: () => {
+          row.appendChild(el('button', { class: 'btn small r-btn-' + (ITEMS[id].rarity || 'common'), onclick: () => {
             const oldMax = Character.maxHp(c);
             G.stash.splice(G.stash.indexOf(id), 1);
             if (c.equip[slot]) G.stash.push(c.equip[slot]);
@@ -768,20 +777,23 @@ const UI = {
     if (it.slot === 'armor') p.push(`AC ${it.ac}${it.maxDex === 0 ? '' : it.maxDex < 9 ? ` + DEX (max ${it.maxDex})` : ' + DEX'}`);
     if (it.fireResist) p.push('fire resist');
     if (it.desc) p.push(it.desc);
-    return p.join(' · ');
+    let s = p.join(' · ');
+    if (it.set && ITEM_SETS[it.set]) s += ` · <i class="set-tag">${ITEM_SETS[it.set].name} set</i>`;
+    if (it.lore) s += `<em class="lore">${it.lore}</em>`;
+    return s;
   },
 
-  price(it) { return Math.round(it.price * (has('market_burned') ? 1.5 : 1) * (has('hearth_defended') ? 0.8 : 1) * (hasPerk('haggler') ? 0.85 : 1)); },
+  price(it) { return Math.round(it.price * (has('market_burned') ? 1.5 : 1) * (has('hearth_defended') ? 0.8 : 1) * (hasPerk('haggler') ? 0.85 : 1) * (typeof Rep !== 'undefined' ? Rep.price(it) : 1)); },
 
   openShop() {
     const wrap = el('div', { class: 'shop' });
     const render = () => {
       wrap.innerHTML = `<h2>${Icon('shop')} Market</h2><div class="muted">You have <b>${G.gold}</b> gold. Gear goes to your unequipped pile — equip it from a character sheet.</div>`;
       const list = el('div', { class: 'shop-list' });
-      SHOP_STOCK.forEach(id => {
+      shopStock().forEach(id => {
         const it = ITEMS[id];
         const owned = !it.consumable && (hasItem(id));
-        const row = el('div', { class: 'shop-row' }, `<div><b>${it.name}</b><small>${it.consumable ? it.desc : UI.itemDesc(it)}${it.slot ? ' · ' + it.slot : ''}</small></div>`);
+        const row = el('div', { class: 'shop-row' }, `<div><b class="r-${it.rarity || 'common'}">${it.name}</b><small>${it.consumable ? it.desc : UI.itemDesc(it)}${it.slot ? ' · ' + it.slot : ''}</small></div>`);
         const price = UI.price(it);
         const b = el('button', { class: 'btn small', disabled: (G.gold < price || owned) ? 'disabled' : undefined, onclick: () => {
           if (G.gold < price) return;
@@ -798,7 +810,7 @@ const UI = {
         wrap.appendChild(el('h3', {}, 'Sell unequipped gear'));
         sellable.forEach(id => {
           const it = ITEMS[id];
-          const row = el('div', { class: 'shop-row' }, `<div><b>${it.name}</b></div>`);
+          const row = el('div', { class: 'shop-row' }, `<div><b class="r-${it.rarity || 'common'}">${it.name}</b></div>`);
           row.appendChild(el('button', { class: 'btn small', onclick: () => { G.stash.splice(G.stash.indexOf(id), 1); G.gold += Math.floor(it.price / 2); Engine.save(); UI.renderParty(); render(); } }, `Sell ${Math.floor(it.price / 2)} g`));
           wrap.appendChild(row);
         });
@@ -806,6 +818,41 @@ const UI = {
     };
     render();
     UI.modal(wrap);
+  },
+
+  /* The Hearthmoor smith: materials become permanent upgrades. */
+  openSmith() {
+    const wrap = el('div', { class: 'shop smith' });
+    const render = () => {
+      const mats = Object.keys(MATERIALS).map(k => `<span class="mat" title="${MATERIALS[k].desc}">${Icon(MATERIALS[k].icon)} ${MATERIALS[k].name} <b>${G.mats[k] || 0}</b></span>`).join('');
+      const d = Loot.discount();
+      wrap.innerHTML = `<h2>${Icon('heavy')} The Smithy</h2><div class="muted">Gold: <b>${G.gold}</b>${d !== 1 ? ` · Dwarven standing: work costs ${d < 1 ? Math.round((1 - d) * 100) + '% less' : Math.round((d - 1) * 100) + '% more'}` : ''}</div><div class="mats">${mats}</div>`;
+      Loot.RECIPES.forEach(r => {
+        const cost = Loot.cost(r), can = Loot.canPay(cost);
+        const costTxt = Object.keys(cost).map(k => `${cost[k]} ${k === 'gold' ? 'gold' : MATERIALS[k].name}`).join(' + ');
+        const row = el('div', { class: 'shop-row' }, `<div><b>${r.name}</b><small>${r.desc}</small><small class="muted">${costTxt}</small></div>`);
+        const box = el('div', { class: 'smith-btns' });
+        if (r.hero) {
+          G.party.forEach(c => {
+            const okc = r.ok(c);
+            box.appendChild(el('button', { class: 'btn small', disabled: can && okc ? undefined : 'disabled', title: okc ? '' : 'Already at its limit', onclick: () => { Loot.pay(Loot.cost(r)); r.apply(c); Sound.play('level'); Engine.save(); UI.renderParty(); render(); } }, `${esc(c.name)}${okc ? '' : ' (max)'}`));
+          });
+        } else box.appendChild(el('button', { class: 'btn small', disabled: can ? undefined : 'disabled', onclick: () => { Loot.pay(Loot.cost(r)); r.apply(); Sound.play('coin'); Engine.save(); UI.renderParty(); render(); } }, 'Do it'));
+        row.appendChild(box);
+        wrap.appendChild(row);
+      });
+    };
+    render();
+    UI.modal(wrap);
+  },
+
+  openCompanion() {
+    if (!compHere()) return;
+    const c = compData(), a = compAppr();
+    UI.modal(`<div class="journal"><h2>${Icon(c.icon)} ${esc(c.name)}</h2><p>${c.blurb}</p>
+      <p><b>${compTitle(a)}</b> — approval ${a} of ±10.</p>
+      <p class="muted">${esc(c.short)} approves of: <b>${c.likes.join(', ')}</b>. Dislikes: <b>${c.dislikes.join(', ')}</b>.</p>
+      <p class="muted small">Approval changes with what you choose. At 3+ ${esc(c.short)} fights harder; at 6+ may give everything for you at the end; at −6 or lower, may turn on you.</p></div>`);
   },
 
   openJournal() {
@@ -820,6 +867,9 @@ const UI = {
       <h3>Florian's Axe</h3><ul>${fr}</ul>
       <h3>Secrets of ${v.short} (${G.clues.length}/3)</h3>${G.clues.length ? `<ul>${G.clues.map(c => `<li>${c}</li>`).join('')}</ul>` : '<p class="muted">Nothing yet. Learn enough, and you may be able to reach the person behind the enemy.</p>'}
       <h3>Allies</h3>${G.allies.length ? `<ul>${G.allies.map(a => `<li>${G.allyNames[a]}</li>`).join('')}</ul>` : '<p class="muted">None yet.</p>'}
+      ${G.companion ? `<h3>${esc(compData().name)}</h3><p>${compData().blurb}</p><p class="muted"><b>${compGone() ? (G.companion.gone === 'fell' ? 'Fell at the gates.' : 'Has left the party.') : compTitle(compAppr()) + ' (' + compAppr() + ')'}</b> · Likes: ${compData().likes.join(', ')} · Dislikes: ${compData().dislikes.join(', ')}</p>` : ''}
+      <h3>Standing</h3>${typeof FACTION_IDS !== 'undefined' ? FACTION_IDS.map(f => { const v = Rep.get(f); return `<div class="rep"><span>${Icon(FACTIONS[f].icon)} <b>${FACTIONS[f].name}</b></span><div class="rep-bar"><i style="left:${(v + 5) * 10}%"></i></div><small>${Rep.title(v)}</small></div>`; }).join('') : ''}
+      <h3>Materials</h3><p>${Object.keys(MATERIALS).map(k => `${MATERIALS[k].name} <b>${G.mats[k] || 0}</b>`).join(' · ')}</p>
       <h3>The Hollow's Reach: ${G.doom}/10</h3><p class="muted">Doom rises with time and failures. It makes the final battle harder and darkens the ending.</p>
       <h3>Chronicle</h3>${G.chronicle.length ? `<ul>${G.chronicle.map(c => `<li>${c}</li>`).join('')}</ul>` : ''}
     </div>`;

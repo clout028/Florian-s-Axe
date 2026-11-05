@@ -113,7 +113,13 @@ const Voice = {
     Voice.queue = [];
     Voice.playing = false;
     if (Voice.ok) { try { speechSynthesis.cancel(); } catch (e) { /* ignore */ } }
-    if (typeof Music !== 'undefined') Music.duck(false);
+    Voice.release();
+  },
+
+  /* Let the music come back up a moment after speech ends (so it doesn't pump between paragraphs). */
+  release() {
+    clearTimeout(Voice._rel);
+    Voice._rel = setTimeout(() => { if (typeof Music !== 'undefined') Music.duck(false); }, 700);
   },
 
   /* Speak one block of HTML. Calls onstart when speech begins and onend when it finishes (or is unavailable). */
@@ -128,21 +134,26 @@ const Voice = {
     const done = ok => { clearTimeout(guard); if (Voice.token === my && onend) onend(ok); };
     const next = () => {
       if (Voice.token !== my) return;
-      if (i >= chunks.length) { if (typeof Music !== 'undefined') Music.duck(false); done(true); return; }
+      if (i >= chunks.length) { Voice.release(); done(true); return; }
       const c = chunks[i++];
       const u = new SpeechSynthesisUtterance(c.t);
       if (voice) { u.voice = voice; u.lang = voice.lang; }
       u.rate = c.quote ? rate * 1.03 : rate;
       u.pitch = c.quote ? 1.07 : 0.97;
       u.volume = 1;
+      let advanced = false, wd;
+      const advance = delay => { if (advanced) return; advanced = true; clearTimeout(wd); setTimeout(next, delay); };
       u.onstart = () => { if (!started) { started = true; if (onstart) onstart(); } };
-      u.onend = () => setTimeout(next, c.quote ? 60 : 110);
-      u.onerror = e => { if (e && (e.error === 'canceled' || e.error === 'interrupted')) return; setTimeout(next, 50); };
-      // Safety: if the engine never fires (muted device / no voices), don't stall the story.
+      u.onend = () => advance(c.quote ? 60 : 110);
+      u.onerror = e => { if (e && (e.error === 'canceled' || e.error === 'interrupted')) return; advance(50); };
+      // Safety nets for engines that never fire events (iOS can drop onend on long lines): don't stall the story.
       clearTimeout(guard);
       guard = setTimeout(() => { if (!started && Voice.token === my) { started = true; if (onstart) onstart(); } }, 1800);
+      const est = Math.max(2500, (c.t.length / (13 * rate)) * 1000 + 3500);
+      wd = setTimeout(() => { if (Voice.token === my && !advanced) { try { speechSynthesis.cancel(); } catch (e) { /* ignore */ } advance(0); } }, est);
       try { speechSynthesis.speak(u); } catch (e) { done(false); }
     };
+    clearTimeout(Voice._rel);
     if (typeof Music !== 'undefined') Music.duck(true);
     next();
   },

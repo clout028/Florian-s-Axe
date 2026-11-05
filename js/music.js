@@ -182,6 +182,10 @@ const THEMES = {
     perc: { t: 'X.......X.x.x...', c: '....X.......X...', f: '..x...x...x...x.', k: 'X...............', from: 0 }, tex: [] },
 };
 
+/* Loudness trim per theme (measured offline so scenes sit at a similar level; battle cues a little hotter). */
+Object.entries({ title: 1.12, town: 1.05, village: 0.8, tavern: 1.03, road: 1.0, mire: 1.2, mines: 0.72, harbor: 1.19, barrow: 1.05, peak: 2.0, orchard: 1.12,
+  court: 1.2, wych: 1.1, fortress: 0.6, camp: 3.2, dawn: 1.0, grey: 1.06, battle: 0.95, boss: 0.9 }).forEach(([k, g]) => { THEMES[k].gain = g; });
+
 /* ---- helpers ---- */
 const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
 
@@ -212,7 +216,7 @@ class MusicEngine {
   /* ---- sessions: one per playing theme, so themes can crossfade ---- */
   session(th, t, fade) {
     const c = this.ctx, S = { th, ctx: c, stop: [] };
-    S.out = c.createGain(); S.out.gain.setValueAtTime(0.0001, t); S.out.gain.linearRampToValueAtTime(1, t + fade);
+    S.out = c.createGain(); S.out.gain.setValueAtTime(0.0001, t); S.out.gain.linearRampToValueAtTime(th.gain || 1, t + fade);
     S.lp = c.createBiquadFilter(); S.lp.type = 'lowpass'; S.lp.frequency.value = th.lp || 9000; S.lp.Q.value = 0.4;
     S.dry = c.createGain(); S.send = c.createGain();
     const conv = c.createConvolver(); conv.buffer = this.ir;

@@ -109,11 +109,15 @@ function Crest(c, size = 52) {
   const [a, b] = RACE_TINTS[c.race] || ['#4a3a2a', '#c9a24a'];
   const id = 'cr' + c.id;
   const corr = Math.min(10, c.corruption || 0) / 10;
+  const rcol = typeof Loot !== 'undefined' && typeof RARITIES !== 'undefined' ? RARITIES[Loot.topRarity(c)].color : '#e8c26a';
+  const ring = typeof Loot !== 'undefined' && Loot.topRarity(c) !== 'common' && Loot.topRarity(c) !== 'uncommon' ? rcol : '#e8c26a';
+  const pips = typeof ITEMS !== 'undefined' && c.equip ? ['weapon', 'armor', 'trinket'].map((s, k) => { const it = ITEMS[c.equip[s]]; const col = it ? RARITIES[it.rarity || 'common'].color : '#3a3028'; return `<circle cx="${[16, 10, 12][k]}" cy="${[50, 44, 38][k]}" r="3.1" fill="${col}" stroke="#140e08" stroke-width="1"/>`; }).join('') : '';
+  const setGlow = typeof Loot !== 'undefined' && c.equip && Loot.activeSets(c).length ? `<circle cx="32" cy="32" r="31" fill="none" stroke="${ring}" stroke-width="1" stroke-dasharray="3 3" opacity=".8"/>` : '';
   return `<svg class="crest" width="${size}" height="${size}" viewBox="0 0 64 64" aria-hidden="true">
     <defs><radialGradient id="${id}" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="${b}"/><stop offset="1" stop-color="${a}"/></radialGradient></defs>
     <circle cx="32" cy="32" r="29" fill="url(#${id})"/>
     <circle cx="32" cy="32" r="29" fill="#8d939b" opacity="${(corr * 0.75).toFixed(2)}"/>
-    <circle cx="32" cy="32" r="29" fill="none" stroke="#e8c26a" stroke-width="2.5"/>
+    <circle cx="32" cy="32" r="29" fill="none" stroke="${ring}" stroke-width="2.5"/>${setGlow}${pips}
     <circle cx="32" cy="32" r="24.5" fill="none" stroke="#1a120a" stroke-opacity=".45" stroke-width="1"/>
     <g transform="translate(14 14) scale(1.5)" fill="none" stroke="#fff4dc" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 1px 1px rgba(0,0,0,.6))">${ICON_PATHS[c.cls] || ''}</g>
     <circle cx="51" cy="51" r="9" fill="#1d1510" stroke="#e8c26a" stroke-width="1.5"/>

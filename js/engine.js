@@ -175,12 +175,15 @@ function hollowOption(label, text, next, cost = 1, extra) {
 /* Can the Hollow make an offer right now? (story checks) */
 function temptReady() { return (G.temptCD || 0) <= 0; }
 
+/* Global tuning knob: the companion, loot, perks and exploration make heroes stronger, so foes are a little tougher. */
+const BALANCE = { hp: 1.2 };
+
 /* Scale an enemy for party size and how far into the adventure we are. */
 function foe(t, overrides = {}) {
   const base = typeof t === 'string' ? ENEMIES[t] : t;
   const lvl = tier();
   const diff = DIFFICULTIES[G.difficulty || 'normal'];
-  const mult = (base.noScale ? 1 : (1 + 0.22 * lvl)) * (solo() ? 0.85 : 1.8) * diff.hp;
+  const mult = (base.noScale ? 1 : (1 + 0.22 * lvl)) * (solo() ? 0.85 : 1.8) * diff.hp * (typeof compHere === 'function' && compHere() ? 1.3 : 1) * BALANCE.hp;
   const e = Object.assign({}, base, overrides);
   e.maxHp = Math.round(e.hp * mult);
   e.hp = e.maxHp;
@@ -229,12 +232,22 @@ const Engine = {
       difficulty: opts.difficulty || 'normal',
       temptCD: 5,
       fallen: [],
+      rep: {}, mats: {}, board: { posted: [], done: [], round: -1 }, explored: {}, companion: null,
       bondType: chars.length === 2 ? (opts.bondType || 'strangers') : undefined,
     };
     if (G.bondType) G.bond = BONDS[G.bondType].start;
     chars.forEach(c => { c.corruption = c.corruption || 0; c.injuries = c.injuries || []; });
     if (typeof Meta !== 'undefined') Meta.applyStart(opts.gift);
     Engine.go(G.hook);
+  },
+
+  /* Older saves lack newer systems; give them defaults. */
+  upgrade() {
+    G.rep = G.rep || {};
+    G.mats = G.mats || {};
+    G.board = G.board || { posted: [], done: [], round: -1 };
+    G.explored = G.explored || {};
+    G.party.forEach(c => { c.tree = c.tree || []; c.injuries = c.injuries || []; c.corruption = c.corruption || 0; });
   },
 
   save() {
@@ -247,6 +260,7 @@ const Engine = {
       if (!raw) return false;
       G = JSON.parse(raw);
       G._notes = [];
+      Engine.upgrade();
       Engine.go(G.scene, true);
       return true;
     } catch (e) { return false; }
@@ -270,7 +284,8 @@ const Engine = {
     }
     if (!sc.ending) Engine.save(); else Engine.clearSave();
     const title = typeof sc.title === 'function' ? sc.title(G) : sc.title;
-    const text = typeof sc.text === 'function' ? sc.text(G) : sc.text;
+    let text = typeof sc.text === 'function' ? sc.text(G) : sc.text;
+    if (!resume && !sc.ending && typeof Companion !== 'undefined' && typeof text === 'string') text += Companion.bark(id);
     const choices = Engine.choicesFor(sc);
     UI.renderScene({ id, title, text, choices, notes: G._notes.slice(), ending: sc.ending, art: sc.art, vote: !!sc.vote && G.party.length === 2 && alive().length === 2 && choices.filter(c => !c.locked).length > 1 });
     G._notes = [];

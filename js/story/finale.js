@@ -403,6 +403,8 @@ function epilogue() {
   if (has('greywater_lost')) e.push(`Greywater stands empty. Someday someone will live there again.`);
   if (G.rival.spared) e.push(`Years later, you hear of a wandering sellsword with a familiar face, protecting villages on the northern border for no pay at all.`);
   if (has('villain_redeemed') && !has('ending_redemption')) e.push(`${V().short} lives out ${V().possessive} days in quiet exile, trying to repair a little of what ${V().pronoun} broke.`);
+  if (typeof Companion !== 'undefined' && Companion.epilogue()) e.push(Companion.epilogue());
+  if (typeof Rep !== 'undefined') e.push(...Rep.epilogue());
   return e;
 }
 

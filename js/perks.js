@@ -83,7 +83,7 @@ Object.keys(CLASS_EXTENSIONS).forEach(k => {
 const WAYFARER = [
   { name: 'Diplomat', wayfarer: true, nodes: [
     { id: 'x_dip1', name: 'Smooth Talker', lvl: 2, desc: '+1 Persuasion, Deception and Intimidation. Win those checks up to DC 12 with words alone (1 Focus).', fx: { skills: { persuasion: 1, deception: 1, intimidation: 1 }, perks: ['smooth_talker'] } },
-    { id: 'x_dip2', name: 'Silver Tongue', lvl: 5, desc: 'Win those checks up to DC 15. Shopkeepers give you 15% off.', fx: { perks: ['silver_tongue', 'haggler'] } },
+    { id: 'x_dip2', name: 'Master Negotiator', lvl: 5, desc: 'Win those checks up to DC 15. Shopkeepers give you 15% off.', fx: { perks: ['silver_tongue', 'haggler'] } },
   ] },
   { name: 'Scout', wayfarer: true, nodes: [
     { id: 'x_sco1', name: 'Pathfinder', lvl: 2, desc: '+1 Survival and Perception. Win those checks up to DC 12 (1 Focus).', fx: { skills: { survival: 1, perception: 1 }, perks: ['pathfinder'] } },
@@ -110,7 +110,7 @@ const WAYFARER = [
 /* Perk catalogue. A perk with `skills` and `dc` is a Mastery. */
 const PERKS = {
   smooth_talker: { name: 'Smooth Talker', skills: ['persuasion', 'deception', 'intimidation'], dc: 12 },
-  silver_tongue: { name: 'Silver Tongue', skills: ['persuasion', 'deception', 'intimidation'], dc: 15 },
+  silver_tongue: { name: 'Master Negotiator', skills: ['persuasion', 'deception', 'intimidation'], dc: 15 },
   pathfinder: { name: 'Pathfinder', skills: ['survival', 'perception'], dc: 12 },
   trailblazer: { name: 'Trailblazer', skills: ['survival', 'perception'], dc: 15 },
   bookworm: { name: 'Bookworm', skills: ['lore', 'arcana', 'investigation'], dc: 12 },

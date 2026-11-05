@@ -90,6 +90,8 @@ SCENES.hub_main = {
       text: s => { const sg = G._sage; G._sage = null; return P(`You set out for ${REGIONS[r].name}. The road takes days, and every day, the grey creeps a little further.`, sg && `Over the long miles ${perkHolder('sage').name} turns the old stories over in their head, and something clicks. <b>${sg}</b>`); },
       next: () => travelTo(r),
     }));
+    if (typeof Companion !== 'undefined') list.push(...Companion.hubChoices());
+    list.push({ label: 'Visit the smithy', icon: 'heavy', hint: 'Temper gear, brew tonics, turn materials into upgrades', ui: 'smith' });
     list.push({ label: 'Visit the market', hint: 'Buy weapons, armor and supplies', ui: 'shop' });
     list.push(diceGame('Dice night at the Copper Kettle (stake 10 gold)', 'kettle_' + G.regionsDone.length, 'hub', { opponent: 'Old Hob the innkeeper', once: 'kettle_dice_' + G.regionsDone.length }));
     if (injuryCount()) list.push({

@@ -2,8 +2,8 @@
    dead ends and balance problems.  Usage: node tools/simulate.js [games] [players 0|1|2] [story|normal|hardcore] */
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const root = path.join(__dirname, '..');
-const files = ['data.js', 'character.js', 'engine.js', 'combat.js', 'perks.js', 'meta.js', 'puzzles.js', 'story/hub.js', 'story/prologue.js', 'story/mire.js', 'story/mines.js',
-  'story/harbor.js', 'story/barrow.js', 'story/peak.js', 'story/orchard.js', 'story/court.js', 'story/wych.js', 'story/interludes.js', 'story/villain.js', 'story/personal.js', 'story/finale.js'];
+const files = ['data.js', 'character.js', 'engine.js', 'combat.js', 'perks.js', 'loot.js', 'meta.js', 'puzzles.js', 'story/hub.js', 'story/prologue.js', 'story/mire.js', 'story/mines.js',
+  'story/harbor.js', 'story/barrow.js', 'story/peak.js', 'story/orchard.js', 'story/court.js', 'story/wych.js', 'story/interludes.js', 'story/villain.js', 'story/personal.js', 'story/finale.js', 'story/factions.js', 'story/companion.js', 'story/mini.js', 'story/explore.js', 'story/board.js'];
 
 const N = parseInt(process.argv[2] || '300', 10);
 const PLAYERS = parseInt(process.argv[3] || '0', 10); // 0 = mixed

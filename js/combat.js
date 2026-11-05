@@ -228,6 +228,7 @@ const Combat = {
     if (opts.extraDie) dmg += RACES[hero.race].abilityDamage || 0;
     if (crit) dmg += Dice.roll(w.dmg).total + (opts.extraDie ? Dice.roll(opts.extraDie).total : 0);
     if (w.radiant && target.hollow) dmg += Dice.roll('1d6').total;
+    if (hero.temper && hero.temper.ward && target.hollow) dmg += 1;
     if (opts.half) dmg = Math.ceil(dmg / 2);
     dmg = Math.max(1, dmg);
     const dealt = Combat.damageEnemy(target, dmg, hero, false);
@@ -492,6 +493,7 @@ const Combat = {
         Combat.log(`${c.name}'s wolf savages ${t.name} for <b>${d}</b>.${Combat.fell(t)}`, 'hit');
       });
     });
+    if (typeof Companion !== 'undefined') Companion.strike(st, st.round).forEach(f => steps.push(f));
     st.allyStrikes.forEach(a => steps.push(() => {
       const t = Dice.pick(Combat.livingEnemies());
       if (!t) return;
