@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smart Shopper</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main>
+  <h1>Smart Shopper</h1>
+  <p class="sub">Describe what you need. We compare total cost, ratings and review authenticity across stores.</p>
+
+  <form id="form">
+    <input id="q" type="search" placeholder="e.g. quiet robot vacuum for pet hair under $300" required autofocus>
+    <button id="go" type="submit">Find best buys</button>
+    <details>
+      <summary>Options</summary>
+      <div class="opts">
+        <fieldset id="vendors"><legend>Stores</legend></fieldset>
+        <label>Priority
+          <select id="priority">
+            <option value="balanced">Balanced</option>
+            <option value="price">Lowest total cost</option>
+            <option value="quality">Best quality</option>
+          </select>
+        </label>
+        <label>Est. sales tax %
+          <input id="tax" type="number" min="0" max="20" step="0.1" value="0">
+        </label>
+      </div>
+    </details>
+  </form>
+
+  <p id="status" role="status" hidden></p>
+  <div id="warnings"></div>
+  <section id="results"></section>
+  <p class="foot">Prices and ratings come from live web research and can be stale or wrong — always confirm on the store page before buying. Shipping shown is for a non-member buyer; membership perks (Prime, Walmart+) may reduce it.</p>
+</main>
+<script src="/app.js" type="module"></script>
+</body>
+</html>
