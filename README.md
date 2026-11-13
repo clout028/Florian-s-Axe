@@ -6,7 +6,9 @@ A choose-your-own-adventure fantasy RPG for **1–2 players**, playable in any b
 
 ## Play
 
-Open `index.html` in a browser — or serve the folder (`python3 -m http.server`) / enable GitHub Pages on the repo. The game autosaves after every scene.
+Open `index.html` in a browser, or serve the folder (`python3 -m http.server`). The game autosaves after every scene.
+
+**Play on your phone:** enable GitHub Pages for the repository (Settings → Pages → Deploy from a branch → pick the branch, folder `/ (root)`), then open `https://<user>.github.io/Florian-s-Axe/` on your phone. Use **Add to Home Screen** (Safari: Share menu; Chrome: ⋮ menu → Install app) to install it with its own icon. It runs full-screen and works offline after the first visit.
 
 ## Features
 
