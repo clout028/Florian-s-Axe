@@ -28,6 +28,7 @@ const UI = {
 
   title() {
     UI.show('#title-screen');
+    if (typeof Narrate !== 'undefined') Narrate.stop();
     document.body.classList.remove('in-game');
     UI.setBackdrop(null);
     if (typeof Sound !== 'undefined') Sound.ambient('title');
@@ -179,6 +180,7 @@ const UI = {
     });
     UI.scrollStoryTop();
     UI.pace(body, box);
+    if (typeof Narrate !== 'undefined') Narrate.speak(`${title || ''}. ${text || ''}`);
   },
 
   stripEmoji(s) { return String(s).replace(/^\s*(?:[←-⇿☀-➿⭐]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|\uD83E[\uDC00-\uDFFF])[️‍]*\s*/, ''); },
@@ -306,6 +308,20 @@ const UI = {
         });
         wrap.appendChild(row);
       });
+      if (Narrate.supported) {
+        const nv = el('div', { class: 'ai-settings' });
+        nv.innerHTML = `<h3>Narrator's voice</h3><p class="muted small">Narration uses the voices built into this device. Pick the one that sounds best to you.</p>`;
+        const on = el('label', { class: 'setting' }, `<input type="checkbox" ${Settings.data.narrate ? 'checked' : ''}> <span><b>Read the story aloud</b><small>Also the speaker button at the top of the screen.</small></span>`);
+        on.querySelector('input').addEventListener('change', e => { Settings.data.narrate = e.target.checked; Settings.save(); if (!e.target.checked) Narrate.stop(); Narrate.button(); });
+        const sel = el('select', { class: 'ai-key' });
+        const cur = Narrate.best();
+        Narrate.voices.forEach(v => { const o = el('option', { value: v.name }, `${esc(v.name)} (${v.lang})`); if (cur && v.name === cur.name) o.selected = true; sel.appendChild(o); });
+        sel.addEventListener('change', () => { Settings.data.narrateVoice = sel.value; Settings.save(); Narrate.speak('A hundred years ago, a woodcutter sealed the Hollow away. "The seal is breaking," said the Keeper.'); });
+        const rate = el('label', { class: 'setting' }, `<span style="flex:1"><b>Speed</b><input type="range" min="0.7" max="1.4" step="0.05" value="${Settings.data.narrateRate || 1}" style="width:100%"></span>`);
+        rate.querySelector('input').addEventListener('change', e => { Settings.data.narrateRate = parseFloat(e.target.value); Settings.save(); Narrate.speak('This is how fast I will read.'); });
+        nv.appendChild(on); nv.appendChild(sel); nv.appendChild(rate);
+        wrap.appendChild(nv);
+      }
       const ai = el('div', { class: 'ai-settings' });
       ai.innerHTML = `<h3>AI Game Master <small class="muted">(optional)</small></h3>
         <p class="muted small">Adds a "Do something else…" option to scenes: type any action and Claude (${AI_MODEL}) decides which skill it needs and how hard it is, and narrates the result. It needs your own Anthropic API key, which is stored only in this browser and sent only to api.anthropic.com. Each attempt is a small paid API call on your account. Anyone using this browser can use the key — don't enable it on a shared computer.</p>`;
@@ -424,6 +440,7 @@ const UI = {
          <div><b>${res}</b><br><small>${esc(ctx.char.name)} rolled ${ctx.roll}${ctx.rerolled ? ' (Lucky reroll)' : ''} ${signed(ctx.total - ctx.roll - ctx.focusRoll - (ctx.helpBonus || 0))}${ctx.focusRoll ? ` +${ctx.focusRoll} Focus` : ''}${ctx.helpBonus ? ` +${ctx.helpBonus} help` : ''} = <b>${ctx.total}</b> vs DC ${ctx.dc}</small></div>`));
     }
     if (text) panel.appendChild(el('div', { class: 'outcome-text fade-in' }, text));
+    if (typeof Narrate !== 'undefined') { if (text) Narrate.speak(text); else Narrate.stop(); }
     if (notes && notes.length) panel.appendChild(el('div', {}, UI.notesHtml(notes)));
     const btn = el('button', { class: 'btn primary' }, `Continue ${Icon('next')}`);
     btn.addEventListener('click', () => { btn.disabled = true; onContinue(); });
@@ -443,6 +460,7 @@ const UI = {
     if (notes && notes.length) panel.appendChild(el('div', {}, UI.notesHtml(notes)));
     panel.appendChild(el('div', { class: 'fork-head' }, `<b>${heading}</b>`));
     if (text) panel.appendChild(el('div', { class: 'outcome-text' }, P(text)));
+    if (typeof Narrate !== 'undefined') Narrate.speak(`${heading}. ${text || ''}`);
     options.forEach(o => {
       const b = el('button', { class: 'choice' + (o.hollow ? ' hollow-choice' : '') }, `<span class="c-icon">${Icon(o.hollow ? 'hollow' : 'chevron')}</span><span class="c-label">${o.label}</span>${o.desc ? `<span class="c-hint">${o.desc}</span>` : ''}`);
       b.addEventListener('click', () => { box.querySelectorAll('button').forEach(x => { x.disabled = true; }); if (typeof Sound !== 'undefined') Sound.play(o.hollow ? 'hollow' : 'click'); o.run(); });
@@ -829,6 +847,7 @@ const UI = {
     }
     const d = cr.draft;
     root.appendChild(el('h2', {}, cr.count === 2 ? `Player ${cr.idx + 1}: create your hero` : 'Create your hero'));
+    root.appendChild(el('p', { class: 'muted create-lead' }, 'Make three choices: a race, a class and a background.'));
     const nameRow = el('div', { class: 'name-row' });
     const input = el('input', { type: 'text', maxlength: 20, placeholder: 'Hero name', value: d.name });
     input.addEventListener('input', () => { d.name = input.value; });
@@ -889,6 +908,15 @@ const UI = {
     const chips = el('div', { class: 'step-chips' });
     steps.forEach(([k, label, table]) => chips.appendChild(el('button', { class: 'step-chip' + (d[k] ? ' done' : ''), onclick: () => goTo(k) }, d[k] ? `${Icon('vote')} ${table[d[k]].name}` : `Choose ${label.toLowerCase()}`)));
     nav.appendChild(chips);
+    // Wrap each choice in its own numbered panel so it is obvious there are three to make.
+    steps.forEach(([k, label, table], n) => {
+      const h = root.querySelector('#sec-' + k), grid = h && h.nextElementSibling;
+      if (!h || !grid) return;
+      const box = el('section', { class: 'pick-section' + (d[k] ? ' done' : '') });
+      h.parentNode.insertBefore(box, h);
+      h.innerHTML = `<span class="step-num">${d[k] ? Icon('vote') : n + 1}</span><span class="step-title">${label}</span><span class="step-state">${d[k] ? table[d[k]].name : 'Choose one'}</span>`;
+      box.appendChild(h); box.appendChild(grid);
+    });
     const nextLabel = cr.chars.length + 1 < cr.count ? 'Next hero' : cr.count === 2 ? 'Choose your bond' : 'Begin the tale';
     nav.appendChild(el('button', { class: 'btn primary' + (missing.length ? ' not-ready' : ''), onclick: () => {
       if (missing.length) { goTo(missing[0][0]); return; }

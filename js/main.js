@@ -3,6 +3,8 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('[data-icon]').forEach(e => { e.outerHTML = Icon(e.dataset.icon); });
   $('#new-btn').addEventListener('click', () => UI.startCreation());
   $('#continue-btn').addEventListener('click', () => { if (!Engine.load()) UI.startCreation(); });
+  Narrate.init(); Narrate.button();
+  $('#narrate-btn').addEventListener('click', () => Narrate.toggle());
   $('#help-btn').addEventListener('click', () => UI.openHelp());
   $('#archive-btn').addEventListener('click', () => UI.openArchive());
   $('#map-btn').addEventListener('click', () => UI.openMap());

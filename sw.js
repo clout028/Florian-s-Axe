@@ -1,6 +1,6 @@
 /* Offline support: cache the game's files so it runs without a connection
    once it has been opened. Bump VERSION whenever files change. */
-const VERSION = 'fa-v2';
+const VERSION = 'fa-v3';
 const FILES = [
   './',
   './index.html',
@@ -18,6 +18,7 @@ const FILES = [
   './js/puzzles.js',
   './js/art.js',
   './js/sound.js',
+  './js/narrate.js',
   './js/story/hub.js',
   './js/story/prologue.js',
   './js/story/mire.js',

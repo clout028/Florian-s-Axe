@@ -53,6 +53,7 @@ const Combat = {
 
   log(text, kind = '') {
     Combat.st.log.push({ text, kind });
+    if ((kind === 'intro' || kind === 'boss') && typeof Narrate !== 'undefined' && !Combat.st.over) Narrate.speak(text);
     const snd = { hit: 'hit', crit: 'crit', miss: 'miss', emiss: 'miss', ehit: 'hurt', heal: 'heal', hollow: 'hollow', boss: 'boss' }[kind];
     const now = Date.now();
     if (snd && typeof Sound !== 'undefined' && now - (Combat._lastSnd || 0) > 90) { Combat._lastSnd = now; Sound.play(snd); }
