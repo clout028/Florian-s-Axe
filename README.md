@@ -32,6 +32,8 @@ Consequences carry forward: fragments you fail to recover make the villain stron
 
 ## More depth
 
+- **Skill, not luck**: checks and attacks are decided by a timing bar the player stops themselves; stats set how wide the target is. Telegraphed enemy attacks can be blocked the same way. Classic d20 rolls remain as a setting.
+- **Voice narration** using the device's built-in voices, with a second voice for quoted speech.
 - **Puzzles for the player**: riddles (typed answers), coded letters that reveal the villain's secrets, rune-dial code locks, a bell-chant memory test, a masquerade whodunit, and a push-your-luck dice game. Randomized each tale, always with a skill-roll hint and a way out.
 - **Succeed at a cost** on narrow misses; in 2-player games, **help** each other or **vote** on contested decisions (and argue it out).
 - **The Hollow tempts you** when you fail or fall. Corruption unlocks dark shortcuts and Grey Fire, changes how people treat you and how the axe responds, and opens a dark ending.

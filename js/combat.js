@@ -151,7 +151,50 @@ const Combat = {
 
   interruptible() { return Combat.livingEnemies().filter(e => e.intent && ['heavy', 'burst', 'heal', 'summon'].includes(e.intent.type)); },
 
+  /* What a die roll's chance of success would be for this action (null = no roll needed). */
+  odds(hero, action, payload, target) {
+    const st = Combat.st, buff = st.buffs[hero.id].attack || 0;
+    const acOf = t => t ? Combat.enemyAC(t) - Combat.exposedBonus(t) : (Combat.livingEnemies().reduce((a, e) => a + Combat.enemyAC(e), 0) / Math.max(1, Combat.livingEnemies().length));
+    const vs = (bonus, ac) => (21 + bonus - ac) / 20;
+    if (action === 'attack') return vs(Character.attackBonus(hero) + buff, acOf(target));
+    if (action === 'interrupt') return vs(Character.attackBonus(hero) + buff - 2, acOf(target));
+    if (action === 'flee') return vs(Character.checkBonus(hero, 'acrobatics').total, st.fleeDC);
+    if (action === 'scene') { const a = st.actions.find(x => x.key === payload); return a && a.skill ? vs(Character.checkBonus(hero, a.skill).total, a.dc) : null; }
+    if (action === 'ability') {
+      const ab = ABILITIES[payload];
+      if (ab.autoHit || hero.focus < ab.cost) return null;
+      if (ab.kind === 'weapon') return vs(Character.attackBonus(hero) + buff + (ab.toHit || 0), acOf(target)) + (ab.advantage ? 0.2 : 0);
+      if (ab.kind === 'spell') return vs(Character.spellAttack(hero) + buff, acOf(target));
+    }
+    return null;
+  },
+
+  /* In skill mode the player's timing replaces the attack roll. */
   perform(hero, action, payload, target) {
+    const st = Combat.st;
+    const p = UI.skillMode() ? Combat.odds(hero, action, payload, target) : null;
+    if (p === null) { Combat._perform(hero, action, payload, target); return; }
+    st.busy = true;
+    const name = action === 'attack' ? `Attack${target ? ' ' + target.name : ''}` : action === 'interrupt' ? 'Interrupt!' : action === 'flee' ? 'Break away' : action === 'scene' ? st.actions.find(x => x.key === payload).label : ABILITIES[payload].name;
+    const attackish = action === 'attack' || action === 'interrupt' || action === 'ability';
+    UI.timing(document.getElementById('combat-actions'), { p, label: `${hero.name} — ${name}`, near: false, verb: attackish ? 'Strike!' : 'Now!' }, q => {
+      Combat._forced = attackish ? (q === 'crit' ? 20 : q === 'hit' ? 18 : 1) : (q === 'miss' ? 1 : 20);
+      st.busy = false;
+      Combat._perform(hero, action, payload, target);
+      Combat._forced = null;
+    });
+  },
+
+  /* Brace against a telegraphed blow: good timing cuts the damage. Resolves to a damage multiplier. */
+  brace(e, text, heroes) {
+    if (!UI.skillMode()) return null;
+    const st = Combat.st;
+    const ac = heroes.reduce((a, h) => a + Character.ac(h) + (st.buffs[h.id].defend ? 4 : 0), 0) / heroes.length;
+    return new Promise(res => UI.timing(document.getElementById('combat-actions'), { p: 0.3 + (ac - 12) / 20, label: `Brace! ${e.name} ${text}`, verb: 'Block!' },
+      q => res({ crit: 0.25, hit: 0.5, near: 0.75, miss: 1 }[q])));
+  },
+
+  _perform(hero, action, payload, target) {
     const st = Combat.st;
     st.busy = true;
     let shownRoll = null;
@@ -190,6 +233,7 @@ const Combat = {
 
   /* ----- Resolution helpers ----- */
   rollD20(hero, advantage) {
+    if (Combat._forced != null) return Combat._forced;
     let r = Dice.d(20);
     if (r === 1 && hero && RACES[hero.race].lucky) r = Dice.d(20);
     if (advantage) r = Math.max(r, Dice.d(20));
@@ -496,7 +540,7 @@ const Combat = {
       Combat.log(`${a.name} ${a.verb || 'strikes'} ${t.name} for <b>${d}</b>.${Combat.fell(t)}`, 'ally');
     }));
     steps.push(() => st.enemies.forEach(e => Combat.checkPhase(e)));
-    Combat.livingEnemies().forEach(e => steps.push(() => { if (e.hp > 0) Combat.enemyTurn(e); }));
+    Combat.livingEnemies().forEach(e => steps.push(() => { if (e.hp > 0) return Combat.enemyTurn(e); }));
     // Statuses on heroes
     steps.push(() => {
       G.party.forEach(h => {
@@ -519,9 +563,9 @@ const Combat = {
         UI.renderCombat();
         return;
       }
-      steps[i]();
-      UI.renderCombat();
-      UI.delay(420, () => run(i + 1));
+      const r = steps[i]();
+      const next = () => { UI.renderCombat(); UI.delay(420, () => run(i + 1)); };
+      if (r && typeof r.then === 'function') r.then(next); else next();
     };
     UI.delay(250, () => run(0));
   },
@@ -537,7 +581,7 @@ const Combat = {
       Combat.log(`${e.name} ${label || 'attacks'} ${h.name}: 🎲${roll} ${signed(atk)} = ${roll + atk} vs AC ${ac} — miss.`, 'emiss');
       return;
     }
-    let dmg = (Dice.roll(dmgExpr).total + (e.dmgBonus || 0)) * mult;
+    let dmg = Math.round((Dice.roll(dmgExpr).total + (e.dmgBonus || 0)) * mult);
     if (roll === 20) dmg += Dice.roll(dmgExpr).total;
     const fireRes = RACES[h.race].fireResist || (ITEMS[h.equip.armor] || {}).fireResist;
     if (e.fire && fireRes) dmg = Math.floor(dmg / 2);
@@ -570,14 +614,19 @@ const Combat = {
       const n = Dice.roll('3d8').total + tier() * 2;
       e.hp = Math.min(e.maxHp, e.hp + n);
       Combat.log(`${e.name} drinks from the grey and knits their wounds closed (+${n} HP).`, 'ehit');
-    } else if (it.type === 'burst') {
-      Combat.log(`${e.name} unleashes the Hollow! Grey fire washes over everyone.`, 'ehit');
-      targets.forEach(h => Combat.hitHero(e, h, e.burst || '2d6', 'scorches'));
-    } else if (it.type === 'sweep') {
-      Combat.log(`${e.name} sweeps through the whole party!`, 'ehit');
-      targets.forEach(h => Combat.hitHero(e, h, '1d8', 'sweeps'));
-    } else if (it.type === 'heavy') {
-      Combat.hitHero(e, tgt(), e.dmg, 'brings a crushing blow down on', 2);
+    } else if (it.type === 'burst' || it.type === 'sweep' || it.type === 'heavy') {
+      const heavy = it.type === 'heavy', t = heavy ? tgt() : null;
+      const land = m => {
+        const note = m <= 0.25 ? ' A perfect block!' : m <= 0.5 ? ' Well braced.' : '';
+        if (it.type === 'burst') { Combat.log(`${e.name} unleashes the Hollow! Grey fire washes over everyone.${note}`, 'ehit'); targets.forEach(h => Combat.hitHero(e, h, e.burst || '2d6', 'scorches', m)); }
+        else if (it.type === 'sweep') { Combat.log(`${e.name} sweeps through the whole party!${note}`, 'ehit'); targets.forEach(h => Combat.hitHero(e, h, '1d8', 'sweeps', m)); }
+        else { if (note) Combat.log(`${t.name} braces.${note}`, 'heal'); Combat.hitHero(e, t, e.dmg, 'brings a crushing blow down on', 2 * m); }
+        if (e.status.rattled) e.status.rattled = 0;
+      };
+      const pr = Combat.brace(e, heavy ? `winds up on ${t.name}` : 'strikes at everyone', heavy ? [t] : targets);
+      if (pr) return pr.then(land);
+      land(1);
+      return;
     } else {
       Combat.hitHero(e, tgt(), e.dmg);
     }

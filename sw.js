@@ -1,6 +1,6 @@
 /* Offline support: cache the game's files so it runs without a connection
    once it has been opened. Bump VERSION whenever files change. */
-const VERSION = 'fa-v3';
+const VERSION = 'fa-v4';
 const FILES = [
   './',
   './index.html',
@@ -36,6 +36,7 @@ const FILES = [
   './js/ai.js',
   './js/ui.js',
   './js/puzzle-ui.js',
+  './js/timing.js',
   './js/main.js',
 ];
 

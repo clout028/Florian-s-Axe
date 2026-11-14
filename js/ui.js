@@ -299,7 +299,7 @@ const UI = {
     const wrap = el('div', { class: 'journal' });
     const render = () => {
       wrap.innerHTML = `<h2>${Icon('gear')} Settings</h2>`;
-      [['sfx', 'Sound effects', 'Dice, blows, chimes — all synthesized in your browser.'], ['music', 'Ambient music', 'A quiet drone that changes with the place you\'re in.'], ['pacing', 'Storyteller pacing', 'Story paragraphs arrive one at a time. Click the text to skip ahead.']].forEach(([k, label, desc]) => {
+      [['sfx', 'Sound effects', 'Dice, blows, chimes — all synthesized in your browser.'], ['music', 'Ambient music', 'A quiet drone that changes with the place you\'re in.'], ['dice', 'Classic dice rolls', 'Let a d20 decide checks and attacks instead of your own timing.'], ['pacing', 'Storyteller pacing', 'Story paragraphs arrive one at a time. Click the text to skip ahead.']].forEach(([k, label, desc]) => {
         const row = el('label', { class: 'setting' }, `<input type="checkbox" ${Settings.data[k] ? 'checked' : ''}> <span><b>${label}</b><small>${desc}</small></span>`);
         row.querySelector('input').addEventListener('change', e => {
           Settings.data[k] = e.target.checked; Settings.save();
@@ -374,7 +374,7 @@ const UI = {
         who.appendChild(b);
       });
       const die = chosen.char.cls === 'bard' ? '1d6' : '1d4';
-      focusWrap.innerHTML = chosen.char.focus > 0 ? `<input type="checkbox" id="use-focus"> Spend 1 Focus for +${die} <small>(${chosen.char.focus} left)</small>` : `<span class="muted">${esc(chosen.char.name)} has no Focus to spend.</span>`;
+      focusWrap.innerHTML = chosen.char.focus > 0 ? `<input type="checkbox" id="use-focus"> ${UI.skillMode() ? 'Spend 1 Focus to steady yourself — a wider target' : `Spend 1 Focus for +${die}`} <small>(${chosen.char.focus} left)</small>` : `<span class="muted">${esc(chosen.char.name)} has no Focus to spend.</span>`;
       const others = info.options.filter(o => o !== chosen);
       if (helper && helper === chosen.char) helper = null;
       helpWrap.innerHTML = '';
@@ -385,15 +385,31 @@ const UI = {
         helpWrap.appendChild(hb);
       }
       const need = info.dc - chosen.total - (helper ? 2 : 0);
-      odds.textContent = need <= 2 ? 'Odds: excellent' : need <= 8 ? 'Odds: good' : need <= 12 ? 'Odds: risky' : 'Odds: long shot';
+      const word = need <= 2 ? 'easy' : need <= 8 ? 'fair' : need <= 12 ? 'hard' : 'very hard';
+      odds.textContent = UI.skillMode() ? `Difficulty for ${chosen.char.name}: ${word}` : 'Odds: ' + { easy: 'excellent', fair: 'good', hard: 'risky', 'very hard': 'long shot' }[word];
+      rollBtn.innerHTML = UI.skillMode() ? 'Attempt it' : `${Icon('dice')} Roll the d20`;
     };
     const odds = el('div', { class: 'odds muted' });
-    const dieBox = el('div', { class: 'die-box' }, UI.d20('?', '', 'd20'));
+    const dieBox = el('div', { class: 'die-box' }, UI.skillMode() ? '' : UI.d20('?', '', 'd20'));
     const rollBtn = el('button', { class: 'btn primary big roll-btn' }, `${Icon('dice')} Roll the d20`);
     rollBtn.addEventListener('click', () => {
       rollBtn.disabled = true;
       who.querySelectorAll('button').forEach(b => { b.disabled = true; });
       const useFocus = !!(document.getElementById('use-focus') || {}).checked;
+      if (UI.skillMode()) {
+        rollBtn.classList.add('hidden'); odds.classList.add('hidden'); focusWrap.classList.add('hidden'); helpWrap.classList.add('hidden');
+        const c = chosen.char;
+        const p = (21 + chosen.total + (helper ? 2 : 0) - info.dc) / 20 + (useFocus && c.focus > 0 ? 0.15 : 0);
+        let lucky = RACES[c.race].lucky;
+        const go = () => UI.timing(dieBox, { p, label: `${esc(c.name)} — ${info.skillName}`, verb: 'Now!' }, q => {
+          if (q === 'miss' && lucky) { lucky = false; dieBox.innerHTML = '<div class="timing-label">Lucky! One more try…</div>'; setTimeout(go, 700); return; }
+          const ctx = Engine.manualCheck(ch, chosen, useFocus, info.dc, helper, q);
+          UI.renderParty();
+          Engine.finishCheck(ch, ctx);
+        });
+        go();
+        return;
+      }
       const ctx = Engine.rollCheck(ch, chosen, useFocus, info.dc, helper);
       UI.renderParty();
       UI.animateDie($('#d20'), ctx.roll, () => Engine.finishCheck(ch, ctx));
@@ -431,6 +447,10 @@ const UI = {
     const box = $('#story-choices');
     box.innerHTML = '';
     const panel = el('div', { class: 'outcome' });
+    if (ctx && ctx.manual) {
+      const res = ctx.crit ? 'Perfect!' : ctx.bought === 'Hollow' ? 'Success — the Hollow\'s gift' : ctx.bought ? `Success at a cost: ${ctx.bought}` : ctx.success ? 'Success!' : 'Failure';
+      panel.appendChild(el('div', { class: 'roll-result ' + (ctx.bought === 'Hollow' ? 'hollow' : ctx.success ? 'good' : 'bad') }, `<div><b>${res}</b><br><small>${esc(ctx.char.name)}${ctx.helper ? ', helped by ' + esc(ctx.helper.name) : ''}</small></div>`));
+    }
     if (ctx && ctx.roll !== undefined && ctx.dc !== undefined && typeof Sound !== 'undefined') Sound.play(ctx.crit ? 'crit' : ctx.bought === 'Hollow' ? 'hollow' : ctx.success ? 'success' : 'fail');
     if (notes && notes.some(n => n.kind === 'level') && typeof Sound !== 'undefined') setTimeout(() => Sound.play('level'), 400);
     if (ctx && ctx.roll !== undefined && ctx.dc !== undefined) {
@@ -457,6 +477,7 @@ const UI = {
     if (ctx && ctx.roll !== undefined && ctx.dc !== undefined) {
       panel.appendChild(el('div', { class: 'roll-result bad' }, `${UI.d20(ctx.roll, 'small landed')}<div><b>${ctx.partial ? 'Narrow miss' : 'Failure'}</b><br><small>${esc(ctx.char.name)} rolled ${ctx.roll} ${signed(ctx.total - ctx.roll - ctx.focusRoll - (ctx.helpBonus || 0))}${ctx.focusRoll ? ` +${ctx.focusRoll} Focus` : ''}${ctx.helpBonus ? ` +${ctx.helpBonus} help` : ''} = <b>${ctx.total}</b> vs DC ${ctx.dc}</small></div>`));
     }
+    if (ctx && ctx.manual) panel.appendChild(el('div', { class: 'roll-result bad' }, `<div><b>${ctx.partial ? 'So close' : 'Missed'}</b><br><small>${esc(ctx.char.name)}</small></div>`));
     if (notes && notes.length) panel.appendChild(el('div', {}, UI.notesHtml(notes)));
     panel.appendChild(el('div', { class: 'fork-head' }, `<b>${heading}</b>`));
     if (text) panel.appendChild(el('div', { class: 'outcome-text' }, P(text)));
@@ -529,7 +550,7 @@ const UI = {
     });
     // log
     const log = $('#combat-log');
-    log.innerHTML = st.log.slice(-40).map(l => `<div class="log ${l.kind}">${String(l.text).replace(/🎲(\d+)/g, '<span class="rc">$1</span>')}</div>`).join('');
+    log.innerHTML = st.log.slice(-40).map(l => `<div class="log ${l.kind}">${(UI.skillMode() ? String(l.text).replace(/🎲\d+ [+−-]\d+ = \d+(?: vs (?:AC|DC) \d+)?(?: — |: |\.)?/g, '') : String(l.text)).replace(/🎲(\d+)/g, '<span class="rc">$1</span>')}</div>`).join('');
     log.scrollTop = log.scrollHeight;
     // actions
     const act = $('#combat-actions');
@@ -773,6 +794,7 @@ const UI = {
     UI.modal(`<div class="journal"><h2>How to Play</h2>
       <p>Florian's Axe is a choose-your-own-adventure for 1 or 2 players. Each tale is different: the villain, the opening, which three lands hide the axe's fragments, and the encounters on the road are all chosen at random — and your choices decide the rest.</p>
       <h3>Choices & checks</h3><p>Choices marked with the die need a <b>skill check</b>: roll a d20 and add the character's stat modifier, proficiency, talents and gear. Meet or beat the DC to succeed. A natural 20 always succeeds; a natural 1 always fails. In a 2-player game, pick who attempts each check. You can spend 1 Focus to add +1d4 (Bards +1d6).</p>
+      <h3>Your timing decides</h3><p>Checks and attacks are settled by you, not by dice. A marker sweeps across a bar: stop it in the <b>green zone</b> to succeed, in the <b>gold centre</b> for a perfect result, or on the amber edge for a near miss you can still rescue at a cost. Better stats, gear and help make the zone wider and the marker slower. When an enemy winds up a big attack, the same bar lets you <b>block</b> to cut the damage. Prefer rolling? Turn on Classic dice in Settings.</p>
       <h3>Puzzles</h3><p>Choices marked with the puzzle piece test <b>you</b>, not your hero: riddles, coded letters, rune locks, bell chants, a masquerade whodunit and dice games. They change every tale. Each has a hint you can earn with a skill roll, and you can always give up — the story carries on either way, but solving it yourself is better.</p>
       <h3>Narrow misses</h3><p>Miss a check by 3 or less and you can <b>succeed at a cost</b> — take a wound, lose time (Doom), gold or Focus — or accept the failure. In 2-player games, the other hero can <b>help</b> for +2, but shares the risk.</p>
       <h3>Battles</h3><p>Choices marked with crossed swords start a battle. Every enemy shows its <b>intent</b> for the round — watch for crushing blows and Hollow bursts. <b>Defend</b> (+3 AC) against them, or <b>Interrupt</b> to break the wind-up. Each battlefield offers <b>scene actions</b> — drop the chandelier, ring the bell. Critical hits stun, bleed or expose foes. Beaten enemies may surrender: spare, question or execute them. Losing usually doesn't end the game — it changes the story, and may leave lasting <b>injuries</b> (treat them at the healer). Only the final battle is to the death.</p>

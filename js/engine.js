@@ -359,6 +359,14 @@ const Engine = {
     return ctx;
   },
 
+  /* Skill mode: the player's timing (crit / hit / near / miss) decides the check. */
+  manualCheck(ch, opt, useFocus, dc, helper, q) {
+    const c = opt.char;
+    if (useFocus && c.focus > 0) c.focus--;
+    const success = q === 'crit' || q === 'hit';
+    return { char: c, dc, total: opt.total, success, partial: q === 'near' && !ch.noPartial, crit: q === 'crit', fumble: false, manual: q, focusRoll: 0, helper, helpBonus: helper ? 2 : 0, parts: opt.parts };
+  },
+
   finishCheck(ch, ctx) {
     G._notes = [];
     if (!ctx.success) {
@@ -398,7 +406,7 @@ const Engine = {
       Dice.shuffle(costs).slice(0, 3).forEach(o => options.push({ label: o.label, desc: o.desc, run: succeed(o.label, o.apply) }));
       if (hollowOk) options.push({ label: 'Let the Hollow carry you', desc: `Easy. Too easy. ${c.name} +1 Corruption.`, hollow: true, run: succeed('Hollow', () => { corrupt(c, 1); G.temptCD = 3; chronicle(`${c.name} let the Hollow guide their hand.`); }) });
       options.push({ label: 'Accept the failure', desc: 'Some things should not be forced.', run: () => { G._notes = []; Engine.completeCheck(ch, ctx); } });
-      return { ctx, heading: `So close — ${ctx.total} against ${ctx.dc}.`, text: `${c.name} can still make this work. But nothing comes free.`, options };
+      return { ctx, heading: ctx.manual ? 'So close.' : `So close — ${ctx.total} against ${ctx.dc}.`, text: `${c.name} can still make this work. But nothing comes free.`, options };
     }
     if (hollowOk && !ctx.fumble && Dice.chance(0.4)) {
       G.temptCD = 4;

@@ -16,6 +16,7 @@ const Q = []; const ENC = {}; const STATS_F = { forks: 0 }; let BOT_HOLLOW = 0.3
 let SIM = { ending: null, scenes: 0, errors: [], combats: 0, combatLoss: 0, path: [], seen: {} };
 const UI = {
   fast: true,
+  skillMode() { return false; },
   delay(ms, fn) { Q.push(fn); },
   error(m) { SIM.errors.push(m); SIM.ending = 'error'; },
   renderScene(sc) {
