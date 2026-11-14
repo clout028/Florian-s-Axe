@@ -1,6 +1,6 @@
 /* Offline support: cache the game's files so it runs without a connection
    once it has been opened. Bump VERSION whenever files change. */
-const VERSION = 'fa-v1';
+const VERSION = 'fa-v2';
 const FILES = [
   './',
   './index.html',
@@ -46,7 +46,7 @@ self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
 
-/* Serve from cache, refresh in the background; Google Fonts are cached as they load. */
+/* Network first, so updates show up straight away; fall back to the cache when offline. */
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
@@ -54,8 +54,14 @@ self.addEventListener('fetch', e => {
   const cacheable = url.origin === location.origin || /fonts\.(googleapis|gstatic)\.com$/.test(url.hostname);
   if (!cacheable) return;
   e.respondWith(caches.open(VERSION).then(async cache => {
-    const hit = await cache.match(req, { ignoreSearch: url.origin === location.origin });
-    const net = fetch(req).then(res => { if (res && (res.ok || res.type === 'opaque')) cache.put(req, res.clone()); return res; }).catch(() => hit);
-    return hit || net;
+    try {
+      const res = await fetch(req);
+      if (res && (res.ok || res.type === 'opaque')) cache.put(req, res.clone());
+      return res;
+    } catch (err) {
+      const hit = await cache.match(req, { ignoreSearch: url.origin === location.origin });
+      if (hit) return hit;
+      throw err;
+    }
   }));
 });

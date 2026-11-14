@@ -24,4 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
 /* Offline / installable app support (only works when served over http(s), not file://) */
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  // When a new version takes over, reload once so the page isn't running old files.
+  let hadController = !!navigator.serviceWorker.controller, reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController && !reloaded) { reloaded = true; location.reload(); } hadController = true; });
 }

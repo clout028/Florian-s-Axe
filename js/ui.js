@@ -34,6 +34,8 @@ const UI = {
     $('#continue-btn').classList.toggle('hidden', !Engine.hasSave());
   },
 
+  lite() { return window.matchMedia && (window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 960); },
+
   /* Full-screen painted backdrop; crossfades when the place changes. */
   setBackdrop(id) {
     if (typeof Art === 'undefined') return;
@@ -44,10 +46,16 @@ const UI = {
     const sameScene = UI._bdKey && UI._bdKey.split(':')[0] === key;
     UI._bdKey = doomKey;
     const cur = bd.querySelector('.bd-layer.on');
-    if (sameScene && cur) { const svg = cur.querySelector('svg'); const fresh = Art.scene(id); const tmp = document.createElement('div'); tmp.innerHTML = fresh; svg.style.filter = tmp.firstChild.style.filter; return; }
+    if (sameScene && cur && !UI.lite()) { const svg = cur.querySelector('svg'); const fresh = Art.scene(id); const tmp = document.createElement('div'); tmp.innerHTML = fresh; svg.style.filter = tmp.firstChild.style.filter; return; }
     const layer = document.createElement('div');
     layer.className = 'bd-layer';
-    layer.innerHTML = Art.scene(id);
+    if (UI.lite()) {
+      // Phones: paint the scene once as a still image so scrolling stays smooth.
+      const img = new Image();
+      img.alt = '';
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(Art.scene(id, true).replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" '));
+      layer.appendChild(img);
+    } else layer.innerHTML = Art.scene(id);
     bd.insertBefore(layer, bd.querySelector('.bd-shade'));
     requestAnimationFrame(() => requestAnimationFrame(() => layer.classList.add('on')));
     if (cur) { cur.classList.remove('on'); setTimeout(() => cur.remove(), 1500); }
@@ -764,9 +772,21 @@ const UI = {
     UI.renderCreation();
   },
 
+  /* Rebuilds the creation screen. Keeps the scroll position while you pick options
+     on the same step, and jumps to the top when the step changes. */
   renderCreation() {
     const cr = UI.cr;
     const root = $('#create-body');
+    const step = !cr.count ? 'count' : cr.bondStep ? 'bond' : 'hero' + cr.idx;
+    const keepY = cr._step === step ? window.scrollY : 0;
+    cr._step = step;
+    root.style.minHeight = root.offsetHeight + 'px';
+    UI._renderCreation(cr, root);
+    root.style.minHeight = '';
+    window.scrollTo(0, keepY);
+  },
+
+  _renderCreation(cr, root) {
     root.innerHTML = '';
     if (!cr.count) {
       root.appendChild(el('h2', {}, 'How many heroes?'));
@@ -817,7 +837,7 @@ const UI = {
     nameRow.appendChild(el('button', { class: 'btn small ghost', onclick: () => { d.name = UI.randomName(); UI.renderCreation(); } }, `${Icon('dice')} Random`));
     root.appendChild(nameRow);
 
-    root.appendChild(el('h3', {}, 'Race'));
+    root.appendChild(el('h3', { id: 'sec-race' }, 'Race'));
     const rg = el('div', { class: 'grid' });
     Object.keys(RACES).forEach(id => {
       const r = RACES[id];
@@ -827,7 +847,7 @@ const UI = {
     });
     root.appendChild(rg);
 
-    root.appendChild(el('h3', {}, 'Class'));
+    root.appendChild(el('h3', { id: 'sec-cls' }, 'Class'));
     const cg = el('div', { class: 'grid' });
     Object.keys(CLASSES).forEach(id => {
       const c = CLASSES[id];
@@ -836,7 +856,7 @@ const UI = {
     });
     root.appendChild(cg);
 
-    root.appendChild(el('h3', {}, 'Background'));
+    root.appendChild(el('h3', { id: 'sec-bg' }, 'Background'));
     const bg = el('div', { class: 'grid' });
     const taken = cr.chars.map(c => c.background);
     Object.keys(BACKGROUNDS).forEach(id => {
@@ -861,10 +881,17 @@ const UI = {
         <div class="derived"><span>${Icon('heart')} HP ${Character.maxHp(preview)}</span><span>${Icon('defend')} AC ${Character.ac(preview)}</span><span>${Icon('attack')} ${Character.weapon(preview).name} ${signed(Character.attackBonus(preview))}</span><span>${Icon('focus')} Focus ${Character.maxFocus(preview)}</span><span>${Icon('ability')} ${ABILITIES[CLASSES[d.cls].ability].name}</span></div></div>`;
       root.appendChild(pv);
     }
-    const nav = el('div', { class: 'nav-row' });
+    const nav = el('div', { class: 'nav-row sticky' });
     nav.appendChild(el('button', { class: 'btn ghost', onclick: () => { if (cr.idx > 0) { cr.idx--; cr.draft = cr.drafts[cr.idx]; cr.chars.pop(); } else { cr.count = null; } UI.renderCreation(); } }, `${Icon('back')} Back`));
-    const ready = d.race && d.cls && d.bg;
-    nav.appendChild(el('button', { class: 'btn primary', disabled: ready ? undefined : 'disabled', onclick: () => {
+    const steps = [['race', 'Race', RACES], ['cls', 'Class', CLASSES], ['bg', 'Background', BACKGROUNDS]];
+    const missing = steps.filter(([k]) => !d[k]);
+    const goTo = k => { const h = document.getElementById('sec-' + k); if (!h) return; h.scrollIntoView({ behavior: 'smooth', block: 'start' }); h.classList.remove('nudge'); void h.offsetWidth; h.classList.add('nudge'); };
+    const chips = el('div', { class: 'step-chips' });
+    steps.forEach(([k, label, table]) => chips.appendChild(el('button', { class: 'step-chip' + (d[k] ? ' done' : ''), onclick: () => goTo(k) }, d[k] ? `${Icon('vote')} ${table[d[k]].name}` : `Choose ${label.toLowerCase()}`)));
+    nav.appendChild(chips);
+    const nextLabel = cr.chars.length + 1 < cr.count ? 'Next hero' : cr.count === 2 ? 'Choose your bond' : 'Begin the tale';
+    nav.appendChild(el('button', { class: 'btn primary' + (missing.length ? ' not-ready' : ''), onclick: () => {
+      if (missing.length) { goTo(missing[0][0]); return; }
       if (!d.name.trim()) d.name = UI.randomName();
       const ch = Character.create(d.name.trim(), d.race, d.cls, d.array);
       ch.background = d.bg;
@@ -874,7 +901,7 @@ const UI = {
       if (cr.chars.length < cr.count) { cr.idx++; UI.newDraft(); UI.renderCreation(); }
       else if (cr.count === 2) { cr.bondStep = true; UI.renderCreation(); }
       else { Engine.newGame(cr.chars, { difficulty: cr.difficulty || 'normal', gift: cr.gift }); }
-    } }, cr.chars.length + 1 < cr.count ? 'Next hero' : cr.count === 2 ? 'Choose your bond' : 'Begin the tale'));
+    } }, missing.length ? `Next: ${missing[0][1].toLowerCase()}` : nextLabel));
     root.appendChild(nav);
   },
 

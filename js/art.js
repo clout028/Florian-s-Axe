@@ -91,7 +91,7 @@ const Art = {
     grey: { sky: ['#2a2c30', '#4a4d52', '#7d8186'], near: '#101113', light: '#d8d8d8', fog: '#bfc2c6', cel: 'none', part: 'ash', stars: 0 },
   },
 
-  scene(id) {
+  scene(id, lite) {
     const key = Art.keyFor(id);
     const P = Art.P[key];
     const r = Art.rng(key + (G ? G.villain + G.started : 'title'));
@@ -125,9 +125,9 @@ const Art = {
     const add = Art.compose[key] || Art.compose.road;
     s += add(r, P, layer);
 
-    s += Art.particles(P.part === 'none' ? null : P.part, r, P.part === 'rain' ? 140 : P.part === 'snow' ? 110 : 55);
+    s += Art.particles(P.part === 'none' ? null : P.part, r, lite ? 30 : P.part === 'rain' ? 140 : P.part === 'snow' ? 110 : 55);
     s += `<rect width="${W}" height="${H}" fill="url(#vig)"/>`;
-    s += `<rect width="${W}" height="${H}" filter="url(#grain)" opacity=".07"/>`;
+    if (!lite) s += `<rect width="${W}" height="${H}" filter="url(#grain)" opacity=".07"/>`;
     const doomGrey = G ? Math.min(0.8, G.doom * 0.075) : 0;
     const sat = key === 'wych' || key === 'grey' || key === 'title' ? 1 : 1 - doomGrey;
     const pfx = 'a' + (Art._n = (Art._n || 0) + 1) + '-';
